@@ -1,0 +1,18 @@
+struct Tree { left: Tree; right: Tree; key: int; }
+
+fun sum(a: int[], n: int): int {
+    var s: int = 0;
+    var i: int = 0;
+    while (i < n) { s = s + a[i]; i = i + 1; }
+    return s;
+}
+
+fun main(): int {
+    var a: int[] = new int[10];
+    var ts: Tree[] = new Tree[4];
+    a[0] = 1 + 2 * 3 - -4;
+    if (a[0] >= 5 && !(a[0] == 0) || false) { print(a[0]); }
+    else if (ts[0] == null) { print(sum(a, 10)); }
+    else { print(0); }
+    return 0;
+}
