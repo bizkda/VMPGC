@@ -73,3 +73,7 @@ def lex(source_code: str):
 
     tokens.append(Token("eof", None, line, column))
     return tokens
+
+if __name__ == "__main__":
+    for token in lex("var x: int = 5; // hi\nx = x == 12;"):
+        print(token)
