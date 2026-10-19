@@ -26,14 +26,14 @@ class Parser:
     
 
     # ---------- checking what we have ----------
-    def check_operator(self, symbol: str) -> bool:
+    def is_operator(self, symbol: str) -> bool:
         """True if the current token is the operator `symbol`."""
-        # TODO: kind must be "operator" and value must equal symbol
-        self.tokens.kind == "operator" and self.token.value
+        if(self.tokens.kind == "operator" and self.token.value == symbol):
+            return True
 
-    def check_keyword(self, word: str) -> bool:
-        # TODO: same idea, with kind "keyword"
-        pass
+    def is_keyword(self, word: str) -> bool:
+        if(self.tokens.kind == "keyword" and self.token.value == word):
+            return True
 
     # ---------- consuming what we expect ----------
     def match_operator(self, symbol: str) -> bool:
