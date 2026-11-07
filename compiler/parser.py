@@ -20,44 +20,56 @@ class Parser:
     def consume_token(self):
         """Return the current token and move to the next one."""
         consumed_token = self.current_token()
-        if consumed_token.kind != "eof":    # note: != , so we stop at the end
+        if consumed_token.kind != "eof":
             self.position += 1
         return consumed_token
-    
 
     # ---------- checking what we have ----------
     def is_operator(self, symbol: str) -> bool:
         """True if the current token is the operator `symbol`."""
-        if(self.tokens.kind == "operator" and self.token.value == symbol):
-            return True
+        token = self.current_token()
+        return token.kind == "operator" and token.value == symbol
 
     def is_keyword(self, word: str) -> bool:
-        if(self.tokens.kind == "keyword" and self.token.value == word):
-            return True
+        """True if the current token is the keyword `word`."""
+        token = self.current_token()
+        return token.kind == "keyword" and token.value == word
 
     # ---------- consuming what we expect ----------
     def match_operator(self, symbol: str) -> bool:
         """If the current token is `symbol`, consume it and return True.
         Otherwise do nothing and return False."""
-        # TODO
-        pass
+        if self.is_operator(symbol):
+            self.consume_token()
+            return True
+        return False
 
     def expect_operator(self, symbol: str):
-        """Consume `symbol`, or raise an error if it's not there."""
-        # TODO: if check_operator(symbol): return self.advance()
-        #       else: self.error(f"expected '{symbol}', found {...}")
-        pass
+        """Consume `symbol` and return its token, or raise an error."""
+        if self.is_operator(symbol):
+            return self.consume_token()
+        self.error(f"expected '{symbol}', found {self.describe_current_token()}")
 
     def expect_keyword(self, word: str):
-        # TODO: same idea
-        pass
+        """Consume the keyword `word` and return its token, or raise an error."""
+        if self.is_keyword(word):
+            return self.consume_token()
+        self.error(f"expected '{word}', found {self.describe_current_token()}")
 
     def expect_identifier(self):
-        """Consume an identifier token and return it."""
-        # TODO: kind must be "identifier"
-        pass
+        """Consume any identifier and return its token, or raise an error."""
+        if self.current_token().kind == "identifier":
+            return self.consume_token()
+        self.error(f"expected an identifier, found {self.describe_current_token()}")
 
     # ---------- errors ----------
+    def describe_current_token(self) -> str:
+        """Text for error messages."""
+        token = self.current_token()
+        if token.kind == "eof":
+            return "end of file"
+        return f"'{token.value}'"
+
     def error(self, message: str):
-        token = self.current()
+        token = self.current_token()
         raise ToyError(message, token.line, token.column)
