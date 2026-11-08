@@ -1,4 +1,3 @@
-
 from lexer import lex, ToyError
 from ast_nodes import *
 
@@ -76,9 +75,8 @@ class Parser:
         raise ToyError(message, token.line, token.column)
 
     # ---------- types ----------
-       # ---------- types ----------
     def parse_base_type(self):
-        """base_type = 'int' | 'bool' | IDENTIFIER      (sans crochets)"""
+        """base_type = 'int' | 'bool' | IDENTIFIER      (without brackets)"""
         token = self.current_token()
         is_builtin_type = token.kind == "keyword" and token.value in ("int", "bool")
         is_struct_name = token.kind == "identifier"
@@ -94,3 +92,75 @@ class Parser:
             self.expect_operator("]")
             type_ref.dimension_count += 1
         return type_ref
+
+    # ---------- declarations ----------
+    def parse_struct(self):
+        """struct_decl = 'struct' IDENTIFIER '{' { IDENTIFIER ':' type ';' } '}'"""
+        start_token = self.expect_keyword("struct")
+        struct_name = self.expect_identifier().value
+        self.expect_operator("{")
+
+        fields = []
+        while not self.is_operator("}"):
+            name_token = self.expect_identifier()
+            self.expect_operator(":")
+            field_type = self.parse_type()
+            self.expect_operator(";")
+            fields.append(StructField(name_token.value, field_type,
+                                      line=name_token.line, column=name_token.column))
+
+        self.expect_operator("}")
+        return StructDecl(struct_name, fields,
+                          line=start_token.line, column=start_token.column)
+
+    def parse_parameter(self):
+        """param = IDENTIFIER ':' type"""
+        name_token = self.expect_identifier()
+        self.expect_operator(":")
+        parameter_type = self.parse_type()
+        return Param(name_token.value, parameter_type,
+                     line=name_token.line, column=name_token.column)
+
+    def parse_parameter_list(self):
+        """parameters = '(' [ param { ',' param } ] ')'"""
+        self.expect_operator("(")
+        parameters = []
+        if not self.is_operator(")"):
+            parameters.append(self.parse_parameter())
+            while self.match_operator(","):
+                parameters.append(self.parse_parameter())
+        self.expect_operator(")")
+        return parameters
+
+    def parse_block(self):
+        """TEMPORARY: only empty blocks for now. Statements come next."""
+        start_token = self.expect_operator("{")
+        statements = []
+        # later: while not self.is_operator("}"): statements.append(self.parse_statement())
+        self.expect_operator("}")
+        return Block(statements, line=start_token.line, column=start_token.column)
+
+    def parse_function(self):
+        """fun_decl = 'fun' IDENTIFIER parameters ':' type block"""
+        start_token = self.expect_keyword("fun")
+        name = self.expect_identifier().value
+        parameters = self.parse_parameter_list()
+        self.expect_operator(":")
+        return_type = self.parse_type()
+        body = self.parse_block()
+        return FunDecl(name, parameters, return_type, body,
+                       line=start_token.line, column=start_token.column)
+
+
+if __name__ == "__main__":
+    print(Parser("struct Node { val: int; next: Node; }").parse_struct())
+    print(Parser("fun push(head: Node, v: int): Node { }").parse_function())
+
+    for bad in ["struct A { x int; }", "fun f(a: int,): int { }", "fun f(): int"]:
+        try:
+            if bad.startswith("struct"):
+                Parser(bad).parse_struct()
+            else:
+                Parser(bad).parse_function()
+        except ToyError as error:
+            print("error:", error)
