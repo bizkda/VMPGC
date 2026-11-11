@@ -5,7 +5,7 @@ from typing import List, Optional
 # ---------- bases ----------
 @dataclass
 class Node:
-    
+    # position in the source file, used for error messages
     line: int = field(default=0, kw_only=True)
     column: int = field(default=0, kw_only=True)
 
@@ -20,7 +20,7 @@ class Expression(Node):
     pass
 
 
-
+# ---------- types ----------
 @dataclass
 class TypeRef(Node):
     # TypeRef("int")                      -> int
@@ -30,7 +30,7 @@ class TypeRef(Node):
     dimension_count: int = 0
 
 
-
+# ---------- expressions ----------
 @dataclass
 class IntLiteral(Expression):
     value: int
@@ -171,11 +171,3 @@ class FunDecl(Node):
 class Program(Node):
     structs: List[StructDecl]
     functions: List[FunDecl]
-
-
-if __name__ == "__main__":
-    tree = Assign(
-        target=Name("x"),
-        value=Binary("+", Name("a"), Binary("*", IntLiteral(2), IntLiteral(3))),
-    )
-    print(tree)
