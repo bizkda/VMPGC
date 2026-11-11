@@ -62,7 +62,7 @@ docs/       cahier des charges and specifications (LaTeX)
 
 ## Where we are
 
-### Done
+### Done M1, parser
 
 - [x] Repository, `.gitignore`, README
 - [x] Cahier des charges (LaTeX)
@@ -73,15 +73,12 @@ docs/       cahier des charges and specifications (LaTeX)
 - [x] **Parser, part 1** (`compiler/parser.py`): token helpers (`current_token`, `look_ahead`,
       `consume_token`, `is_operator`, `is_keyword`, `match_operator`, `expect_*`, `error`) and
       `parse_type`
-
-### In progress: M1, parser
-
-- [ ] `parse_struct`  ← **next**
-- [ ] `parse_function` and its parameter list
-- [ ] `parse_program` (loop over all declarations until end of file)
-- [ ] Statements: `var`, assignment, `if` / `else`, `while`, `return`, `print`, blocks, call statements
-- [ ] Expressions: operator precedence, unary operators, calls, `.field`, `[index]`, `new T`, `new T[n]`
-- [ ] Parser tests (valid programs, plus invalid ones that must give a precise error)
+- [x] `parse_struct`  ← **next**
+- [x] `parse_function` and its parameter list
+- [x] `parse_program` (loop over all declarations until end of file)
+- [x] Statements: `var`, assignment, `if` / `else`, `while`, `return`, `print`, blocks, call statements
+- [x] Expressions: operator precedence, unary operators, calls, `.field`, `[index]`, `new T`, `new T[n]`
+- [x] Parser tests (valid programs, plus invalid ones that must give a precise error)
 
 **M1 is finished when** `tests/list.toy` and `tests/arrays.toy` parse completely and the invalid
 programs give errors with the right line and column.
@@ -90,9 +87,10 @@ programs give errors with the right line and column.
 
 | Milestone | Goal | Done when |
 |---|---|---|
-| **M1** Lexer, AST, parser | source text to AST | all example programs parse; syntax errors are located |
+
 | **M2** Type checker | check types, resolve names | ill-typed programs are rejected; every expression knows if it is a reference |
 | **M3** Code generator | AST to bytecode, type descriptors, stack maps | `.tbc` file written; readable disassembly (`--dump`) |
+
 | **M4** VM without GC | loader, interpreter, plain heap | output tests pass |
 | **M5** Mark-and-Sweep | precise GC driven by stack maps | `list.toy` runs in a bounded heap |
 | **M6** Stop-and-Copy | Cheney's algorithm, two semi-spaces | same outputs as M5 |
