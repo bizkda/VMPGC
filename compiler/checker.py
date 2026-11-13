@@ -40,21 +40,32 @@ class Checker:
         
     # ---------- pass 1: structs and functions ----------
     def collect_declarations(self):
-        # TODO 4: first loop over self.program.structs:
-        #         duplicate name -> "duplicate struct 'X'"
-        #         register the name with an empty dict so recursive structs work
-        #         (struct Node { next: Node; } must not fail)
-        # TODO 5: second loop over the structs: fill each field dict
-        #         with resolve_type(field.type); duplicate field -> "duplicate field 'x' in struct 'S'"
-        # TODO 6: loop over self.program.functions: build a FunctionSignature,
-        #         duplicate name -> "duplicate function 'f'"
-        # TODO 7: if "main" is missing -> raise ToyError("missing function 'main'", 1, 1)
-        #         main must have no parameters and return int
-        pass
-        while self.program.structs:
-            struct = self.program.structs.pop(0)
+        # TODO 4: record every struct name (empty field table for now)
+        for struct in self.program.structs:
             if struct.name in self.struct_fields:
                 self.error(f"duplicate struct '{struct.name}'", struct)
-            self.struct_fields[struct.name] = {}   
+            self.struct_fields[struct.name] = {}
+        # TODO 5: now that all names are known, resolve the fields
+        for struct in self.program.structs:
+            fields = self.struct_fields[struct.name]
+            for field in struct.fields:
+                if field.name in fields:
+                    self.error(f"duplicate field '{field.name}' in struct '{struct.name}'", field)
+                fields[field.name] = self.resolve_type(field.type)
+        # TODO 6: function signatures
+        for function in self.program.functions:
+            if function.name in self.functions:
+                self.error(f"duplicate function '{function.name}'", function)
+            parameter_types = [self.resolve_type(p.type) for p in function.params]
+            return_type = self.resolve_type(function.return_type)
+            self.functions[function.name] = FunctionSignature(
+                function.name, parameter_types, return_type)
+        # TODO 7: main must exist, take no parameters and return int
+        main_node = next((f for f in self.program.functions if f.name == "main"), None)
+        if main_node is None:
+            raise ToyError("missing function 'main'", 1, 1)
+        main_signature = self.functions["main"]
+        if main_signature.parameter_types or main_signature.return_type != INT:
+            self.error("'main' must have no parameters and return int", main_node)
 
         
