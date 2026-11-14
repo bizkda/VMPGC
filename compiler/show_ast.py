@@ -1,6 +1,7 @@
 """Print the AST of a Toy file as a tree.
 
 Usage:  python3 compiler/show_ast.py tests/list.toy
+        python3 compiler/show_ast.py tests/list.toy --check   (also run the type checker)
         python3 compiler/show_ast.py tests/list.toy --ascii   (no special characters)
 """
 import dataclasses
@@ -9,10 +10,12 @@ import sys
 from lexer import ToyError
 from ast_nodes import Node, TypeRef
 from parser import parse
+from checker import check
 
 # (branch, last branch, vertical bar, blank) used to draw the tree
 FANCY = ("├── ", "└── ", "│   ", "    ")
 ASCII = ("|-- ", "`-- ", "|   ", "    ")
+TYPE_FIELDS = ("static_type", "resolved_type")
 
 
 def type_text(type_ref):
@@ -24,10 +27,16 @@ def node_text(node, label):
     prefix = f"{label}: " if label else ""
     if isinstance(node, TypeRef):
         return f"{prefix}{type_text(node)}"
-    simple = [f"{f.name}={getattr(node, f.name)!r}"
-              for f in dataclasses.fields(node)
-              if f.name not in ("line", "column")
-              and not isinstance(getattr(node, f.name), (Node, list))]
+    simple = []
+    for f in dataclasses.fields(node):
+        value = getattr(node, f.name)
+        if f.name in ("line", "column") or isinstance(value, (Node, list)):
+            continue
+        if f.name in TYPE_FIELDS:            # filled in by the type checker
+            if value is not None:
+                simple.append(f"{f.name}={value}")
+            continue
+        simple.append(f"{f.name}={value!r}")
     return f"{prefix}{type(node).__name__} {' '.join(simple)}".rstrip()
 
 
@@ -66,10 +75,11 @@ def print_tree(value, symbols, label="", prefix="", is_last=True, is_root=True):
 
 
 def main():
-    arguments = [a for a in sys.argv[1:] if a != "--ascii"]
-    symbols = ASCII if "--ascii" in sys.argv[1:] else FANCY
+    options = [a for a in sys.argv[1:] if a.startswith("--")]
+    arguments = [a for a in sys.argv[1:] if not a.startswith("--")]
+    symbols = ASCII if "--ascii" in options else FANCY
     if len(arguments) != 1:
-        print("usage: python3 compiler/show_ast.py <file.toy> [--ascii]")
+        print("usage: python3 compiler/show_ast.py <file.toy> [--check] [--ascii]")
         sys.exit(1)
 
     if hasattr(sys.stdout, "reconfigure"):
@@ -79,6 +89,8 @@ def main():
         source_code = source_file.read()
     try:
         program = parse(source_code)
+        if "--check" in options:
+            check(program)
     except ToyError as error:
         print(f"{arguments[0]}:{error}")
         sys.exit(1)
