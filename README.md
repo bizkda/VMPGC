@@ -5,7 +5,7 @@ A compiler (Python) and a bytecode virtual machine (C) with a **precise garbage 
 Project 4 of the compilers course list, by **Mansour Abderezak** and **Badreddine Mamouni**
 (4th year Informatique, cycle ingénieur, Université de Béjaïa).
 
-*Status as of 10 November 2026.*
+*Status as of 14 November 2026: M1 (parser) and M2 (type checker) are finished. Next: M3, the code generator.*
 
 ## What it is
 
@@ -18,6 +18,7 @@ tells it (stack maps and type descriptors). It never guesses.
 list.toy ──► [ compiler (Python) ] ──► list.tbc ──► [ VM (C) + GC ] ──► output
               lexer → parser →                       loader → interpreter →
               type checker → codegen                 heap → Mark-and-Sweep / Cheney
+              └── done ──────┘ └ to do ┘              └──────────── to do ───────────┘
 ```
 
 Example Toy program (`tests/list.toy`): it allocates a million nodes and almost all of them become
@@ -48,10 +49,16 @@ fun main(): int {
 ## Repository layout
 
 ```
-compiler/   lexer, AST, parser, type checker, code generator   (Python)
-vm/         loader, interpreter, heap, garbage collectors      (C)
-tests/      .toy programs, expected outputs, unit tests
-docs/       cahier des charges and specifications (LaTeX)
+compiler/
+  lexer.py        text -> tokens
+  ast_nodes.py    the classes of the syntax tree
+  parser.py       tokens -> AST
+  toy_types.py    the types: int, bool, null, struct, array
+  checker.py      type checker (semantic analysis)
+  show_ast.py     prints the AST as a tree (--check adds the types)
+vm/               loader, interpreter, heap, garbage collectors   (C, from M4)
+tests/            .toy programs and unit tests
+docs/             cahier des charges and specifications (LaTeX)
 ```
 
 ## Documents
@@ -60,9 +67,24 @@ docs/       cahier des charges and specifications (LaTeX)
 - **Spécifications** (`docs/specifications.tex`): the Toy language, typing rules, bytecode instruction
   set, `.tbc` file format, stack maps, VM options and GC algorithms.
 
+## Try it
+
+```
+python3 tests/test_parser.py                           # parser tests
+python3 tests/test_checker.py                          # type checker tests
+python3 compiler/show_ast.py tests/list.toy            # the AST as a tree
+python3 compiler/show_ast.py tests/list.toy --check    # the same tree, with the type of every node
+```
+
+An error gives the exact position:
+
+```
+bad.toy:2:18: type mismatch: expected int, found bool
+```
+
 ## Where we are
 
-### Done M1, parser
+### M1, lexer, AST and parser: done
 
 - [x] Repository, `.gitignore`, README
 - [x] Cahier des charges (LaTeX)
@@ -70,51 +92,59 @@ docs/       cahier des charges and specifications (LaTeX)
 - [x] **Lexer** (`compiler/lexer.py`): tokens with line and column, `//` comments, two-character
       operators, clear errors
 - [x] **AST** (`compiler/ast_nodes.py`): base classes `Statement` and `Expression`, all node types
-- [x] **Parser, part 1** (`compiler/parser.py`): token helpers (`current_token`, `look_ahead`,
-      `consume_token`, `is_operator`, `is_keyword`, `match_operator`, `expect_*`, `error`) and
-      `parse_type`
-- [x] `parse_struct`  ← **next**
-- [x] `parse_function` and its parameter list
-- [x] `parse_program` (loop over all declarations until end of file)
-- [x] Statements: `var`, assignment, `if` / `else`, `while`, `return`, `print`, blocks, call statements
-- [x] Expressions: operator precedence, unary operators, calls, `.field`, `[index]`, `new T`, `new T[n]`
-- [x] Parser tests (valid programs, plus invalid ones that must give a precise error)
+- [x] **Parser** (`compiler/parser.py`):
+  - [x] token helpers (`current_token`, `look_ahead`, `consume_token`, `is_operator`, `is_keyword`,
+        `match_operator`, `expect_*`, `error`)
+  - [x] types, `struct`, `fun` with its parameter list, `parse_program`
+  - [x] statements: `var`, assignment, `if` / `else if` / `else`, `while`, `return`, `print`, blocks, call statements
+  - [x] expressions: operator precedence, unary operators, calls, `.field`, `[index]`, `new T`, `new T[n]`
+- [x] Parser tests (valid programs, plus invalid ones that give a precise error)
 
-**M1 is finished when** `tests/list.toy` and `tests/arrays.toy` parse completely and the invalid
-programs give errors with the right line and column.
+### M2, type checker: done
+
+- [x] Types as objects (`compiler/toy_types.py`): `int`, `bool`, `null`, struct, array; compatibility rules
+- [x] Collect struct and function declarations (order does not matter, structs may refer to each other)
+- [x] Check `main(): int` exists
+- [x] Scopes for variables, no masking
+- [x] Type of every expression, stored in `static_type`; type of every variable and parameter,
+      stored in `resolved_type` (what the code generator will read)
+- [x] Check each statement and expression against the typing rules T1 to T16 of the specifications
+- [x] Check that every function returns on every path
+- [x] Tests for each error message (with line and column)
+
+Rules of the checker worth knowing:
+- `return;` without a value is refused: Toy has no `void` type.
+- Only a call can be used as a statement (`1 + 2;` is an error).
+- `var x: int = x;` is an error: the value is checked before the variable exists.
+- The return analysis is conservative: a `return` that is only inside a `while` does not count,
+  because the loop might never run. Put a `return` after the loop.
+- Arrays of arrays are not supported.
 
 ## What remains
 
-| Milestone | Goal | Done when |
-|---|---|---|
-
-| **M2** Type checker | check types, resolve names | ill-typed programs are rejected; every expression knows if it is a reference |
-| **M3** Code generator | AST to bytecode, type descriptors, stack maps | `.tbc` file written; readable disassembly (`--dump`) |
-
-| **M4** VM without GC | loader, interpreter, plain heap | output tests pass |
-| **M5** Mark-and-Sweep | precise GC driven by stack maps | `list.toy` runs in a bounded heap |
-| **M6** Stop-and-Copy | Cheney's algorithm, two semi-spaces | same outputs as M5 |
-| **M7** Stress and measures | collect on every allocation, heap verifier, benchmarks | zero verifier errors; comparison report |
+| Milestone | Goal | Done when | Status |
+|---|---|---|---|
+| **M1** Lexer, AST, parser | source text to AST | all example programs parse; syntax errors are located | done |
+| **M2** Type checker | check types, resolve names | ill-typed programs are rejected; every expression has a type | done |
+| **M3** Code generator | AST to bytecode, type descriptors, stack maps | `.tbc` file written; readable disassembly (`--dump`) | **next** |
+| **M4** VM without GC | loader, interpreter, plain heap | output tests pass | to do |
+| **M5** Mark-and-Sweep | precise GC driven by stack maps | `list.toy` runs in a bounded heap | to do |
+| **M6** Stop-and-Copy | Cheney's algorithm, two semi-spaces | same outputs as M5 | to do |
+| **M7** Stress and measures | collect on every allocation, heap verifier, benchmarks | zero verifier errors; comparison report | to do |
 
 Priority: **M1 to M5** already satisfy the project statement (it asks for Stop-and-Copy *or*
 Mark-and-Sweep). M6 and M7 make the result stronger.
 
 ### Detail of the later milestones
 
-**M2, type checker**
-- [ ] Collect struct and function declarations (order does not matter)
-- [ ] Check each statement and expression against the typing rules T1 to T16 of the specifications
-- [ ] Check that every function returns on every path and that `main(): int` exists
-- [ ] Annotate each expression with its type and whether it is a reference
-- [ ] Tests for each error message
-
-**M3, code generator**
-- [ ] Assign one local slot per variable declaration
+**M3, code generator** (reads the typed AST from M2)
+- [ ] Assign one local slot per variable declaration (parameters first)
 - [ ] Generate instructions for statements and expressions (`JZ` and `JMP` for `if`, `while`, `&&`, `||`)
 - [ ] Build the type descriptor table (which struct fields are pointers)
-- [ ] Simulate the operand stack types to produce a stack map at every `NEW`, `NEW_ARRAY` and `CALL`
+- [ ] Track the types of the operand stack to produce a stack map at every `NEW`, `NEW_ARRAY` and `CALL`
 - [ ] Write the `.tbc` file; write the disassembler
 - [ ] Command line: `python3 compiler/toyc.py prog.toy [-o prog.tbc] [--dump]`
+- [ ] Tests: expected bytecode for small programs
 
 **M4, VM without GC**
 - [ ] Load and validate a `.tbc` file
@@ -140,22 +170,16 @@ Mark-and-Sweep). M6 and M7 make the result stronger.
 - [ ] Run everything under AddressSanitizer and UBSan
 - [ ] Benchmark both collectors and write the comparison
 
-## Decisions still open
+## Decisions
 
+Settled:
+- Toy has no `void` type: every function returns a value (implemented in the checker).
+
+Still open:
 - Dates of the milestones and the supervisor's name (cahier des charges and specifications)
 - Heap size default (8 MB proposed) and object header size (16 bytes proposed, confirm at M4)
 - Final instruction list (confirm at M3); `PRINT` is split into `PRINT_INT` and `PRINT_BOOL`
-- No `void` type in Toy: every function returns a value (to confirm)
 - Licence of the repository
-
-## Running the tests
-
-```
-python3 tests/test_lexer.py
-python3 tests/test_parser.py
-```
-
-*(Compiler and VM command lines are listed above under M3 and M4 and do not exist yet.)*
 
 ## Requirements
 

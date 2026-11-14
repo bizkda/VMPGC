@@ -40,17 +40,27 @@ INT, BOOL, NULL = IntType(), BoolType(), NullType()
 
 
 def is_reference(type_) -> bool:
-    """True for struct and array types (the values the GC must follow)."""
-    if(type_ is NULL or isinstance(type_, (StructType, ArrayType))):
-        return True
-    return False
+    """True for struct and array types, and for the type of `null`
+    (all of them are values the GC has to look at)."""
+    return type_ == NULL or isinstance(type_, (StructType, ArrayType))
 
 
 def is_compatible(source, target) -> bool:
     """Can a value of type `source` be used where `target` is expected?
-    (rule from the specifications: equal types, or null for a reference type)"""
-    if source == target:
-        return True
-    if source is NULL and is_reference(target):
-        return True
-    return False
+    Equal types, or `null` for any reference type."""
+    return source == target or (source == NULL and is_reference(target))
+
+
+if __name__ == "__main__":
+    node = StructType("Node")
+    print(is_reference(INT), is_reference(node), is_reference(ArrayType(INT)))
+    print(is_compatible(INT, INT), is_compatible(INT, BOOL))
+    print(is_compatible(NULL, node), is_compatible(NULL, INT))
+    print(is_compatible(node, StructType("Other")))
+    print(ArrayType(node))
+    print(is_reference(NULL), is_compatible(NULL, NULL), is_compatible(node, NULL))
+    # rule T8 (== and !=) on references: null == p, p == null, null == null
+    def comparable(a, b):
+        return is_reference(a) and is_reference(b) and (is_compatible(a, b) or is_compatible(b, a))
+    print(comparable(NULL, node), comparable(node, NULL), comparable(NULL, NULL),
+          comparable(node, StructType("Other")), comparable(INT, NULL))
