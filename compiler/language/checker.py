@@ -1,6 +1,20 @@
-from lexer import ToyError
-from ast_nodes import *
-from toy_types import INT, BOOL, NULL, StructType, ArrayType, is_reference, is_compatible
+from compiler.language.lexer import ToyError
+from compiler.language.ast_nodes import *
+from compiler.language.toy_types import INT, BOOL, NULL, StructType, ArrayType, is_reference, is_compatible
+
+
+def always_returns(statement):
+    """True if every path through `statement` ends with a return.
+    Conservative: a while loop is assumed to possibly never run."""
+    if isinstance(statement, ReturnStatement):
+        return True
+    if isinstance(statement, Block):
+        return any(always_returns(inner) for inner in statement.statements)
+    if isinstance(statement, IfStatement):
+        return (statement.else_block is not None
+                and always_returns(statement.then_block)
+                and always_returns(statement.else_block))
+    return False
 
 
 class FunctionSignature:
@@ -261,17 +275,7 @@ class Checker:
     #  functions and the whole program
     # =================================================================
     def always_returns(self, statement):
-        """True if every path through `statement` ends with a return.
-        Conservative: a while loop is assumed to possibly never run."""
-        if isinstance(statement, ReturnStatement):
-            return True
-        if isinstance(statement, Block):
-            return any(self.always_returns(inner) for inner in statement.statements)
-        if isinstance(statement, IfStatement):
-            return (statement.else_block is not None
-                    and self.always_returns(statement.then_block)
-                    and self.always_returns(statement.else_block))
-        return False
+        return always_returns(statement)
 
     def check_function(self, function):
         signature = self.functions[function.name]

@@ -7,10 +7,10 @@ Usage:  python3 compiler/show_ast.py tests/list.toy
 import dataclasses
 import sys
 
-from lexer import ToyError
-from ast_nodes import Node, TypeRef
-from parser import parse
-from checker import check
+from compiler.language.lexer import ToyError
+from compiler.language.ast_nodes import Node, TypeRef
+from compiler.language.parser import parse
+from compiler.language.checker import check
 
 # (branch, last branch, vertical bar, blank) used to draw the tree
 FANCY = ("├── ", "└── ", "│   ", "    ")

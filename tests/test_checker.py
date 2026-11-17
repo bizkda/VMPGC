@@ -2,16 +2,14 @@ import os
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(HERE, "..", "compiler"))
+# Point to the project root (VMPGC/) where the 'compiler' folder lives
+sys.path.insert(0, os.path.join(HERE, ".."))
 
-from lexer import ToyError
-from ast_nodes import Name
-from parser import parse
-from parser import Parser
-from checker import Checker, check
-from toy_types import INT, BOOL, NULL, StructType, ArrayType
-
-
+from compiler.language.lexer import ToyError
+from compiler.language.ast_nodes import Name
+from compiler.language.parser import parse, Parser
+from compiler.language.checker import Checker, check
+from compiler.language.toy_types import INT, BOOL, NULL, StructType, ArrayType
 def collect(source_code):
     program = parse(source_code)
     checker = Checker(program)

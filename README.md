@@ -18,7 +18,7 @@ tells it (stack maps and type descriptors). It never guesses.
 list.toy ──► [ compiler (Python) ] ──► list.tbc ──► [ VM (C) + GC ] ──► output
               lexer → parser →                       loader → interpreter →
               type checker → codegen                 heap → Mark-and-Sweep / Cheney
-              └── done ──────┘ └ to do ┘              └──────────── to do ───────────┘
+              └── done ────────────┘                └──────────── to do ───────────┘
 ```
 
 Example Toy program (`tests/list.toy`): it allocates a million nodes and almost all of them become

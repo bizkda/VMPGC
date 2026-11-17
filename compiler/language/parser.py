@@ -1,5 +1,5 @@
-from lexer import lex, ToyError
-from ast_nodes import *
+from compiler.language.lexer import lex, ToyError
+from compiler.language.ast_nodes import *
 
 # Binary operators: a higher number binds tighter.
 BINARY_PRECEDENCE = {
