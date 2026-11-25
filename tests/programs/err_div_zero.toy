@@ -1,0 +1,9 @@
+// @exit 100
+// @stderr division by zero
+fun main(): int {
+    print(1);
+    var zero: int = 0;
+    print(10 / zero);
+    print(2);
+    return 0;
+}

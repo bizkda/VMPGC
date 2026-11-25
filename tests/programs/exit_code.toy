@@ -1,0 +1,6 @@
+// @exit 7
+// The value returned by main is the exit code of the program.
+fun main(): int {
+    print(42);
+    return 7;
+}

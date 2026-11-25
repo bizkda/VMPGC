@@ -1,0 +1,42 @@
+// Recursion, mutual recursion, loops inside functions.
+fun fib(n: int): int {
+    if (n < 2) { return n; }
+    return fib(n - 1) + fib(n - 2);
+}
+fun fact(n: int): int {
+    if (n <= 1) { return 1; }
+    return n * fact(n - 1);
+}
+fun gcd(a: int, b: int): int {
+    if (b == 0) { return a; }
+    return gcd(b, a % b);
+}
+fun is_even(n: int): bool {
+    if (n == 0) { return true; }
+    return is_odd(n - 1);          // is_odd is declared below: the order does not matter
+}
+fun is_odd(n: int): bool {
+    if (n == 0) { return false; }
+    return is_even(n - 1);
+}
+fun power(base: int, exponent: int): int {
+    var result: int = 1;
+    var i: int = 0;
+    while (i < exponent) { result = result * base; i = i + 1; }
+    return result;
+}
+fun depth(n: int): int {
+    if (n == 0) { return 0; }
+    return 1 + depth(n - 1);
+}
+fun main(): int {
+    print(fib(20));
+    print(fact(10));
+    print(gcd(48, 18));
+    print(is_even(10));
+    print(is_odd(7));
+    print(is_even(7));
+    print(power(3, 13));
+    print(depth(5000));            // 5000 nested calls
+    return 0;
+}

@@ -1,0 +1,31 @@
+// @heap 32768
+// @expect-gc
+// A small version of tree.toy that can run in stress mode.
+struct Tree { left: Tree; right: Tree; key: int; }
+
+fun build(depth: int, key: int): Tree {
+    if (depth == 0) { return null; }
+    var node: Tree = new Tree;
+    node.key = key;
+    node.left = build(depth - 1, key * 2);
+    node.right = build(depth - 1, key * 2 + 1);
+    return node;
+}
+fun sum(t: Tree): int {
+    if (t == null) { return 0; }
+    return t.key + sum(t.left) + sum(t.right);
+}
+fun main(): int {
+    var kept: Tree = build(6, 1);
+    var round: int = 0;
+    var checksum: int = 0;
+    while (round < 25) {
+        var garbage: Tree = build(5, round + 1);
+        checksum = checksum + sum(garbage);
+        round = round + 1;
+    }
+    print(sum(kept));
+    print(checksum);
+    print(sum(kept));
+    return 0;
+}

@@ -1,0 +1,38 @@
+// @heap 262144
+// @expect-gc
+// @no-stress
+// A big tree is kept while many other trees are built and dropped. Objects move (Stop-and-Copy),
+// so every link of the kept tree must be updated correctly.
+struct Tree { left: Tree; right: Tree; key: int; }
+
+fun build(depth: int, key: int): Tree {
+    if (depth == 0) { return null; }
+    var node: Tree = new Tree;
+    node.key = key;
+    node.left = build(depth - 1, key * 2);
+    node.right = build(depth - 1, key * 2 + 1);
+    return node;
+}
+fun sum(t: Tree): int {
+    if (t == null) { return 0; }
+    return t.key + sum(t.left) + sum(t.right);
+}
+fun count(t: Tree): int {
+    if (t == null) { return 0; }
+    return 1 + count(t.left) + count(t.right);
+}
+fun main(): int {
+    var kept: Tree = build(10, 1);
+    var round: int = 0;
+    var checksum: int = 0;
+    while (round < 30) {
+        var garbage: Tree = build(9, round + 1);
+        checksum = checksum + sum(garbage);
+        round = round + 1;
+    }
+    print(count(kept));
+    print(sum(kept));
+    print(checksum);
+    print(sum(kept));              // unchanged after all the collections
+    return 0;
+}

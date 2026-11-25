@@ -1,0 +1,9 @@
+// @exit 100
+// @stderr index 5 is out of bounds for an array of length 5
+fun main(): int {
+    var a: int[] = new int[5];
+    a[4] = 40;
+    print(a[4]);
+    print(a[5]);
+    return 0;
+}

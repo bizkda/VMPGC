@@ -1,0 +1,35 @@
+// @heap 65536
+// @expect-gc
+// A stack made of linked items, with a lot of push/pop churn.
+struct Item { value: int; next: Item; }
+struct Stack { top: Item; size: int; }
+
+fun push(s: Stack, v: int): int {
+    var it: Item = new Item;
+    it.value = v;
+    it.next = s.top;
+    s.top = it;
+    s.size = s.size + 1;
+    return 0;
+}
+fun pop(s: Stack): int {
+    var it: Item = s.top;
+    s.top = it.next;
+    s.size = s.size - 1;
+    return it.value;
+}
+fun main(): int {
+    var s: Stack = new Stack;
+    var i: int = 0;
+    while (i < 1000) { push(s, i); i = i + 1; }
+    var total: int = 0;
+    var j: int = 0;
+    while (j < 600) { total = total + pop(s); j = j + 1; }
+    var r: int = 0;
+    while (r < 5000) { push(s, r); total = total + pop(s); r = r + 1; }
+    print(s.size);
+    print(total);
+    while (s.size > 0) { total = total + pop(s); }
+    print(total);
+    return 0;
+}

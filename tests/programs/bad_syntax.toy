@@ -1,0 +1,5 @@
+// @compile-error 4:5: expected ';', found 'return'
+fun main(): int {
+    var x: int = 5
+    return x;
+}

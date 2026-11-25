@@ -1,0 +1,23 @@
+// Sieve of Eratosthenes with an array of bool.
+fun main(): int {
+    var limit: int = 1000;
+    var composite: bool[] = new bool[limit + 1];
+    var i: int = 2;
+    while (i * i <= limit) {
+        if (!composite[i]) {
+            var j: int = i * i;
+            while (j <= limit) { composite[j] = true; j = j + i; }
+        }
+        i = i + 1;
+    }
+    var count: int = 0;
+    var last: int = 0;
+    var k: int = 2;
+    while (k <= limit) {
+        if (!composite[k]) { count = count + 1; last = k; }
+        k = k + 1;
+    }
+    print(count);
+    print(last);
+    return 0;
+}

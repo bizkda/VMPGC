@@ -1,0 +1,7 @@
+// @compile-error wrong number of arguments for 'add': expected 2, found 1
+fun add(a: int, b: int): int {
+    return a + b;
+}
+fun main(): int {
+    return add(1);
+}

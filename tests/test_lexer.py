@@ -2,7 +2,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))   # the project root
-from compiler.language.lexer import lex, ToyError
+from compiler.frontend.lexer import lex, ToyError
 
 
 def kinds_and_values(source_code):

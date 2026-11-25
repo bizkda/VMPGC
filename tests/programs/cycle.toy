@@ -1,0 +1,55 @@
+// @heap 65536
+// @expect-gc
+// Circular, doubly linked rings. Cyclic garbage must be collected, a live ring must stay intact.
+struct Ring { next: Ring; prev: Ring; id: int; }
+
+fun make_ring(size: int, first_id: int): Ring {
+    var head: Ring = new Ring;
+    head.id = first_id;
+    var tail: Ring = head;
+    var i: int = 1;
+    while (i < size) {
+        var node: Ring = new Ring;
+        node.id = first_id + i;
+        node.prev = tail;
+        tail.next = node;
+        tail = node;
+        i = i + 1;
+    }
+    tail.next = head;
+    head.prev = tail;
+    return head;
+}
+fun ring_size(start: Ring): int {
+    var count: int = 1;
+    var p: Ring = start.next;
+    while (p != start) { count = count + 1; p = p.next; }
+    return count;
+}
+fun forward_sum(start: Ring): int {
+    var total: int = start.id;
+    var p: Ring = start.next;
+    while (p != start) { total = total + p.id; p = p.next; }
+    return total;
+}
+fun backward_sum(start: Ring): int {
+    var total: int = start.id;
+    var p: Ring = start.prev;
+    while (p != start) { total = total + p.id; p = p.prev; }
+    return total;
+}
+fun main(): int {
+    var kept: Ring = make_ring(50, 1000);
+    var round: int = 0;
+    var garbage_nodes: int = 0;
+    while (round < 200) {
+        var garbage: Ring = make_ring(40, round);
+        garbage_nodes = garbage_nodes + ring_size(garbage);
+        round = round + 1;
+    }
+    print(ring_size(kept));
+    print(forward_sum(kept));
+    print(backward_sum(kept));
+    print(garbage_nodes);
+    return 0;
+}

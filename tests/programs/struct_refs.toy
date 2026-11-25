@@ -1,0 +1,24 @@
+// References: identity, null, sharing, arrays of references.
+struct Box { v: int; }
+fun main(): int {
+    var a: Box = new Box;
+    var b: Box = new Box;
+    var c: Box = a;
+    print(a == b);
+    print(a == c);
+    print(a != b);
+    print(a == null);
+    var n: Box = null;
+    print(n == null);
+    print(null == n);
+    a.v = 5;
+    print(c.v);                    // c and a are the same object
+    b = a;
+    b.v = 8;
+    print(a.v);
+    var boxes: Box[] = new Box[3];
+    print(boxes[1] == null);       // the elements start as null
+    boxes[1] = a;
+    print(boxes[1] == c);
+    return 0;
+}

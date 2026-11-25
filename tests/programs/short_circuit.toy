@@ -1,0 +1,18 @@
+// && and || only evaluate their right side when needed; operands are evaluated left to right.
+fun say(n: int, result: bool): bool {
+    print(n);
+    return result;
+}
+fun tag(n: int): int {
+    print(n);
+    return n;
+}
+fun main(): int {
+    print(say(1, false) && say(2, true));
+    print(say(3, true) || say(4, false));
+    print(say(5, true) && say(6, true));
+    print(say(7, false) || say(8, true));
+    print(say(9, true) && (say(10, false) || say(11, true)));
+    print(tag(1) + tag(2) * tag(3));
+    return 0;
+}

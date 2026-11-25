@@ -1,0 +1,23 @@
+// Blocks open scopes; sibling blocks may reuse a name, even with another type.
+fun main(): int {
+    var x: int = 1;
+    if (true) {
+        var t: int = 10;
+        print(t + x);
+    }
+    if (true) {
+        var t: bool = true;
+        print(t);
+    }
+    var n: int = 0;
+    while (n < 3) {
+        var inner: int = n * 2;
+        print(inner);
+        n = n + 1;
+    }
+    {
+        var block: int = 99;
+        print(block);
+    }
+    return 0;
+}

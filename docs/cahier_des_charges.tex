@@ -1,0 +1,400 @@
+\documentclass[11pt,a4paper]{article}
+
+% ---------- encodage, langue, mise en page ----------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\IfFileExists{lmodern.sty}{\usepackage{lmodern}}{}
+\usepackage[french]{babel}
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage{microtype}
+
+% ---------- tableaux, listes, couleurs ----------
+\usepackage{booktabs,longtable,array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,fit}
+\usepackage{fancyhdr}
+\usepackage[colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black,
+            pdftitle={Cahier des charges VMPGC},
+            pdfauthor={Mansour Abderezak, Badreddine Mamouni}]{hyperref}
+
+\setlist{itemsep=2pt,topsep=4pt}
+\renewcommand{\arraystretch}{1.25}
+\setlength{\parskip}{4pt}
+\setlength{\parindent}{0pt}
+\setlength{\emergencystretch}{3em}
+
+% code en ligne : \code{type_id} fonctionne sans échapper les caractères spéciaux
+\newcommand{\code}[1]{\texttt{\detokenize{#1}}}
+
+% ---------- informations du document ----------
+\newcommand{\encadrant}{\textit{à compléter}}
+
+% ---------- en-têtes et pieds de page ----------
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{\small Cahier des charges --- VMPGC}
+\rhead{\small Université de Béjaïa}
+\cfoot{\small\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ---------- listings ----------
+\lstset{
+  basicstyle=\ttfamily\footnotesize,
+  frame=single,
+  rulecolor=\color{black!30},
+  backgroundcolor=\color{black!3},
+  breaklines=true,
+  columns=fullflexible,
+  keepspaces=true,
+  inputencoding=utf8,
+  extendedchars=true,
+  literate={é}{{\'e}}1 {è}{{\`e}}1 {ê}{{\^e}}1 {à}{{\`a}}1 {ç}{{\c c}}1
+}
+
+\begin{document}
+
+% =====================================================================
+%  PAGE DE TITRE
+% =====================================================================
+\begin{titlepage}
+\centering
+{\large Université de Béjaïa\par}
+\vspace{2mm}
+{\normalsize Cycle ingénieur --- 4\textsuperscript{e} année Informatique\par}
+
+\vspace{3cm}
+{\Large\bfseries Cahier des charges\par}
+\vspace{6mm}
+{\fontsize{34}{40}\selectfont\bfseries VMPGC\par}
+\vspace{6mm}
+{\large Compilateur Toy et machine virtuelle\\à ramasse-miettes précis\par}
+\vspace{8mm}
+{\normalsize Projet 4 : machine virtuelle avec ramasse-miettes (\emph{Garbage Collector}) précis\par}
+
+\vfill
+\begin{tabular}{rl}
+  \textbf{Réalisé par :} & Mansour Abderezak \\
+                         & Badreddine Mamouni \\[4mm]
+  \textbf{Encadrant :}   & \encadrant \\[4mm]
+  \textbf{Dépôt :}       & \url{https://github.com/bizkda/VMPGC} \\
+\end{tabular}
+
+\vspace{1.5cm}
+Version 1.1 --- 24 novembre 2026\\
+Année universitaire 2026--2027
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+% =====================================================================
+\section{Contexte et état actuel}
+
+Le sujet du projet 4 demande d'écrire un compilateur dont le code généré interagit avec un gestionnaire de mémoire dynamique développé par les étudiants. Les fonctionnalités avancées attendues sont un ramasse-miettes de type \emph{Mark-and-Sweep} ou \emph{Stop-and-Copy}, ce qui impose au compilateur de produire des cartes de pile (\emph{stack maps}) pour identifier les pointeurs actifs.
+
+\textbf{Pourquoi un langage dédié ?} Les langages existants (C, Java, Python) sont soit trop vastes à analyser, soit trop permissifs sur les types : en C, un entier peut contenir une adresse, ce qui rend un ramasse-miettes précis impossible. Un petit langage statiquement typé, appelé \textbf{Toy}, permet au compilateur de savoir à tout moment quelles variables et quels champs sont des pointeurs.
+
+\textbf{État actuel (24 novembre 2026) :} les sept jalons sont terminés.
+\begin{itemize}
+  \item compilateur en Python : lexer, parser, vérificateur de types, générateur de code (bytecode, descripteurs de types, stack maps), commande \code{toyc.py} ;
+  \item machine virtuelle en C : chargeur du fichier \code{.tbc}, interpréteur, tas, deux ramasse-miettes précis (Mark-and-Sweep et Stop-and-Copy), mode stress, vérificateur de tas, statistiques ;
+  \item tests unitaires, 38 programmes de test de bout en bout (chacun avec les deux ramasse-miettes, avec et sans mode stress, avec AddressSanitizer), démonstration guidée et comparaison des deux ramasse-miettes dans le dépôt \code{bizkda/VMPGC}.
+\end{itemize}
+
+% =====================================================================
+\section{Objectifs et indicateurs}
+
+\textbf{Objectif stratégique :} livrer, à la date de rendu fixée avec l'encadrant, une chaîne complète \emph{source Toy $\rightarrow$ bytecode $\rightarrow$ VM en C} dont le ramasse-miettes précis récupère toute la mémoire inutile sans jamais libérer un objet vivant, et le démontrer par des tests de stress et des mesures.
+
+\begin{longtable}{@{}p{0.28\textwidth} p{0.60\textwidth}@{}}
+\toprule
+\textbf{Indicateur} & \textbf{Critère de succès} \\
+\midrule
+\endhead
+Programmes de test & 100~\% des fichiers \code{.toy} de \code{tests/} donnent la sortie attendue \\
+Mémoire bornée & \code{list.toy} (1\,000\,000 d'allocations) s'exécute avec un tas de taille fixe (valeur à fixer, par exemple 8~Mo) sans dépassement \\
+Sûreté du GC & en mode stress (collecte à chaque allocation) : 0 erreur du vérificateur de tas \\
+Structures cycliques & listes et graphes circulaires correctement récupérés \\
+Comparaison & rapport de mesures (temps, nombre de collectes, octets récupérés) pour chaque GC implémenté \\
+Qualité du code C & 0 erreur sous AddressSanitizer et UBSan sur toute la suite de tests \\
+\bottomrule
+\end{longtable}
+
+% =====================================================================
+\section{Périmètre du projet}
+
+\begin{longtable}{@{}p{0.44\textwidth} p{0.44\textwidth}@{}}
+\toprule
+\textbf{Inclus (\emph{In})} & \textbf{Exclus (\emph{Out})} \\
+\midrule
+\endhead
+Lexer, parser, vérificateur de types (Python) & Génération de code natif x86-64 ou ARM \\
+Générateur de bytecode avec descripteurs de types et stack maps & Ramasse-miettes générationnel, incrémental ou concurrent \\
+VM en C : chargeur, interpréteur, tas & Multithreading \\
+Mark-and-Sweep précis & Chaînes de caractères, flottants, bibliothèque standard \\
+Stop-and-Copy (algorithme de Cheney) & Héritage, méthodes, génériques, tableaux multidimensionnels \\
+Mode stress, vérificateur de tas, statistiques de GC & Optimisations du compilateur (SSA, propagation de constantes) \\
+Tests, benchmarks, documentation & Interface graphique, débogueur \\
+\bottomrule
+\end{longtable}
+
+% =====================================================================
+\section{Parcours utilisateurs et exigences fonctionnelles}
+
+\subsection{Personas}
+\begin{itemize}
+  \item \textbf{Développeur Toy} : écrit des programmes \code{.toy}, les compile et les exécute.
+  \item \textbf{Évaluateur (encadrant)} : compile, exécute, active le mode stress et lit les statistiques.
+  \item \textbf{Auteurs} : font évoluer le compilateur et la VM.
+\end{itemize}
+
+\subsection{User stories}
+
+\begin{longtable}{@{}p{0.06\textwidth} p{0.47\textwidth} p{0.35\textwidth}@{}}
+\toprule
+\textbf{ID} & \textbf{En tant que\ldots{} je veux\ldots{} afin de\ldots} & \textbf{Critères d'acceptation} \\
+\midrule
+\endhead
+US1 & En tant que développeur Toy, je veux déclarer des structs, des tableaux et des fonctions afin de construire des listes et des arbres & \code{list.toy} et \code{arrays.toy} compilent \\
+US2 & En tant que développeur Toy, je veux des erreurs de syntaxe et de types précises afin de corriger mon code & message au format \code{ligne:colonne: description} ; erreurs testées (affectation d'un \code{int} à une struct, mauvais arguments d'appel, champ inexistant) \\
+US3 & En tant que développeur Toy, je veux voir le résultat de \code{print} afin de vérifier mon programme & la sortie est identique à la sortie attendue du test \\
+US4 & En tant que développeur Toy, je veux ne jamais libérer la mémoire moi-même afin de me concentrer sur la logique & un programme qui crée des millions d'objets temporaires ne dépasse pas la taille du tas \\
+US5 & En tant qu'évaluateur, je veux choisir le GC et la taille du tas en ligne de commande afin de les comparer & options \code{--gc=ms} ou \code{--gc=copy}, \code{--heap=<octets>} et \code{--gc-stats} \\
+US6 & En tant qu'évaluateur, je veux un mode stress et un vérificateur de tas afin de contrôler la précision du GC & \code{--stress} lance une collecte à chaque allocation ; après chaque collecte, le vérificateur contrôle que tout pointeur atteignable désigne un objet valide \\
+US7 & En tant que développeur Toy, je veux être protégé des erreurs d'exécution afin de comprendre ce qui se passe & accès hors bornes, déréférencement de \code{null} et division par zéro arrêtent le programme avec un message clair, sans plantage du système \\
+\bottomrule
+\end{longtable}
+
+\subsection{Le langage Toy (résumé)}
+\begin{itemize}
+  \item Types : \code{int}, \code{bool}, types struct (références), tableaux \code{T[]} et valeur \code{null}.
+  \item Instructions : \code{var}, affectation, \code{if} / \code{else}, \code{while}, \code{return}, \code{print(expr);} et appel de fonction.
+  \item Expressions : opérateurs arithmétiques, de comparaison et logiques, \code{new T}, \code{new T[n]}, accès \code{a.champ}, indexation \code{a[i]} et appels.
+  \item Point d'entrée : \code{fun main(): int}.
+\end{itemize}
+
+% =====================================================================
+\section{Spécifications et contraintes techniques}
+
+\subsection{Architecture cible}
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+  box/.style={draw, rounded corners=2pt, align=center, minimum width=2.7cm,
+              minimum height=7mm, font=\footnotesize, fill=white},
+  arr/.style={-{Stealth[length=2mm]}},
+  frame/.style={draw, dashed, rounded corners=4pt, inner sep=7pt}
+]
+  \node[box] (toy) at (0,0)      {programme.toy};
+  \node[box] (lex) at (3.9,0)    {Lexer};
+  \node[box] (par) at (3.9,-1.2) {Parser};
+  \node[box] (chk) at (3.9,-2.4) {Vérificateur\\de types};
+  \node[box] (gen) at (3.9,-3.6) {Générateur\\de code};
+  \node[box] (tbc) at (7.8,-3.6) {programme.tbc\\+ stack maps};
+  \node[box] (ldr) at (11.7,-3.6) {Chargeur};
+  \node[box] (itp) at (11.7,-2.4) {Interpréteur};
+  \node[box] (gc)  at (11.7,-1.2) {Tas et\\ramasse-miettes};
+
+  \draw[arr] (toy) -- (lex);
+  \draw[arr] (lex) -- (par);
+  \draw[arr] (par) -- (chk);
+  \draw[arr] (chk) -- (gen);
+  \draw[arr] (gen) -- (tbc);
+  \draw[arr] (tbc) -- (ldr);
+  \draw[arr] (ldr) -- (itp);
+  \draw[arr] (itp) -- (gc);
+
+  \node[frame, fit=(lex)(par)(chk)(gen),
+        label={[font=\footnotesize]above:Compilateur (Python)}] {};
+  \node[frame, fit=(ldr)(itp)(gc),
+        label={[font=\footnotesize]above:VM (C)}] {};
+\end{tikzpicture}
+\caption{Chaîne complète : du programme Toy à l'exécution}
+\end{figure}
+
+\begin{longtable}{@{}p{0.22\textwidth} p{0.66\textwidth}@{}}
+\toprule
+\textbf{Élément} & \textbf{Choix} \\
+\midrule
+\endhead
+Compilateur & Python 3.10 ou plus (dataclasses avec \code{kw_only}) \\
+VM & C11, gcc ou clang, Makefile \\
+Tests & scripts Python et programmes \code{.toy} avec sortie attendue \\
+Versionnement & Git, dépôt \code{github.com/bizkda/VMPGC}, branche \code{main} \\
+\bottomrule
+\end{longtable}
+
+\subsection{Modèle mémoire}
+\begin{itemize}
+  \item Toutes les valeurs font 64 bits ; \code{null} vaut 0.
+  \item Chaque objet commence par un en-tête contenant le \code{type_id}, un bit de marque (Mark-and-Sweep) ou un pointeur de redirection (Stop-and-Copy), et la taille ou la longueur du tableau. L'en-tête fait 16 octets (voir les spécifications).
+  \item Le compilateur émet une table de descripteurs de types : pour chaque \code{type_id}, les décalages des champs qui sont des pointeurs. Un tableau d'\code{int} et un tableau de références ont des \code{type_id} différents.
+\end{itemize}
+
+\subsection{Bytecode}
+Machine à pile : \code{PUSH_INT}, \code{LOAD_LOCAL}, \code{STORE_LOCAL}, opérations arithmétiques et comparaisons, \code{JMP}, \code{JZ}, \code{CALL}, \code{RET}, \code{NEW}, \code{NEW_ARRAY}, \code{GETFIELD}, \code{PUTFIELD}, \code{ALOAD}, \code{ASTORE}, \code{PRINT_INT}, \code{PRINT_BOOL}. La liste définitive est celle des spécifications.
+
+\subsection{Exigence centrale : la précision}
+\begin{itemize}
+  \item Le compilateur simule les types de la pile d'opérandes pendant la génération du code.
+  \item À chaque point de sûreté (\code{NEW}, \code{NEW_ARRAY}, \code{CALL}), il émet une stack map : un bitmap des variables locales et des emplacements de la pile d'opérandes qui contiennent des références.
+  \item Le GC parcourt les cadres d'appel, retrouve chaque stack map à partir de l'adresse de retour, et ne traite comme racines que les emplacements marqués. Aucun balayage conservatif n'est autorisé.
+\end{itemize}
+
+\subsection{Contraintes de qualité}
+\begin{itemize}
+  \item \textbf{Performance :} le temps d'exécution de \code{list.toy} est mesuré à M4 (sans GC) puis comparé aux deux GC ; les seuils seront fixés après ces mesures.
+  \item \textbf{Robustesse :} compilation C avec \code{-Wall -Wextra}, tests sous \code{-fsanitize=address,}\allowbreak\code{undefined}.
+  \item \textbf{Lisibilité :} noms explicites pour les fonctions et les variables (convention du projet).
+\end{itemize}
+
+% =====================================================================
+\section{Gouvernance, rôles et ressources}
+
+Les deux auteurs, Mansour Abderezak et Badreddine Mamouni, tiennent à la fois les rôles de maîtrise d'ouvrage (ils définissent le besoin) et de maîtrise d'œuvre (ils réalisent). La répartition détaillée des tâches entre eux est à préciser au fil des jalons. L'encadrant valide les jalons. Claude intervient comme assistant pédagogique : il explique, propose des plans et relit le code, mais ce sont les auteurs qui écrivent et comprennent leur code.
+
+\begin{longtable}{@{}p{0.42\textwidth} p{0.14\textwidth} p{0.14\textwidth} p{0.12\textwidth}@{}}
+\toprule
+\textbf{Activité} & \textbf{Auteurs} & \textbf{Encadrant} & \textbf{Claude} \\
+\midrule
+\endhead
+Définition du besoin et du langage Toy & R, A & C & C \\
+Écriture du code (compilateur et VM) & R, A & I & C \\
+Relecture et explications & A & I & R \\
+Tests et mesures & R, A & I & C \\
+Validation finale & R & A & I \\
+\bottomrule
+\end{longtable}
+
+\emph{R = réalise, A = décide, C = consulté, I = informé.}
+
+\textbf{Ressources :} un poste de développement avec Python 3.10+, gcc ou clang, make et git ; le dépôt GitHub.
+
+% =====================================================================
+\section{Planning, méthodologie et assurance qualité}
+
+\textbf{Méthode :} développement itératif par jalons courts. Chaque jalon se termine par des tests qui passent et un commit. On ne commence pas le jalon suivant tant que le précédent n'est pas validé.
+
+\begin{longtable}{@{}p{0.07\textwidth} p{0.23\textwidth} p{0.40\textwidth} p{0.14\textwidth}@{}}
+\toprule
+\textbf{Jalon} & \textbf{Contenu} & \textbf{Critère de sortie} & \textbf{Statut} \\
+\midrule
+\endhead
+M1 & Lexer, AST, parser & tous les \code{.toy} d'exemple sont analysés ; les erreurs de syntaxe sont localisées & Terminé \\
+M2 & Vérificateur de types & programmes mal typés rejetés ; chaque expression annotée \og pointeur ou non \fg{} & Terminé \\
+M3 & Générateur de code & fichier \code{.tbc} avec descripteurs de types et stack maps ; désassembleur lisible & Terminé \\
+M4 & VM sans GC & tas simple avec \code{malloc} ; les tests de sortie passent & Terminé \\
+M5 & Mark-and-Sweep précis & \code{list.toy} tient dans un tas borné & Terminé \\
+M6 & Stop-and-Copy (Cheney) & mêmes tests et mêmes sorties qu'avec M5 & Terminé \\
+M7 & Mode stress, vérificateur de tas, benchmarks & 0 erreur en stress ; rapport de mesures & Terminé \\
+\bottomrule
+\end{longtable}
+
+Les dates des jalons sont à fixer avec l'encadrant. Les jalons M1 à M5 sont prioritaires : le sujet demande un GC de type Stop-and-Copy \textbf{ou} Mark-and-Sweep, donc M5 couvre déjà l'exigence. M6 et M7 enrichissent le résultat.
+
+\subsection{Plan d'assurance qualité}
+\begin{itemize}
+  \item Tests unitaires du lexer, du parser et du vérificateur de types.
+  \item Tests de bout en bout : chaque \code{.toy} est accompagné d'un fichier de sortie attendue.
+  \item Tests négatifs : des programmes invalides qui doivent produire une erreur précise.
+  \item Mode stress et vérificateur de tas dès M5.
+  \item Un commit par étape avec un message clair ; aucun jalon n'est validé sans tests.
+\end{itemize}
+
+% =====================================================================
+\section{Budget, risques et clauses}
+
+\textbf{Budget :} projet académique sans coût financier ; la ressource est le temps. \emph{Build} = développement des jalons M1 à M7 ; \emph{Run} = démonstration, documentation et corrections. Il est recommandé de garder environ 20~\% du temps en réserve pour les aléas, surtout pour M3 et M5, les deux jalons les plus délicats.
+
+\begin{longtable}{@{}p{0.33\textwidth} p{0.09\textwidth} p{0.43\textwidth}@{}}
+\toprule
+\textbf{Risque} & \textbf{Impact} & \textbf{Parade} \\
+\midrule
+\endhead
+Stack map incorrecte : un objet vivant est libéré & Élevé & mode stress, vérificateur de tas, tests sur listes, arbres et cycles \\
+Pointeurs non mis à jour après une copie (Cheney) & Élevé & vérificateur de tas après chaque collecte ; comparaison des sorties avec Mark-and-Sweep \\
+Bugs mémoire dans la VM en C & Élevé & AddressSanitizer, UBSan, valgrind \\
+Vérificateur de types plus long que prévu & Moyen & réduire le langage (retirer \code{bool} ou les tableaux) et noter la décision \\
+Dérive de périmètre & Moyen & section \og Exclus \fg{} ; tout ajout passe par une mise à jour de ce document \\
+Manque de temps & Moyen & M1 à M5 d'abord, puis M6 ; M7 d'abord en version minimale (mode stress) \\
+\bottomrule
+\end{longtable}
+
+\subsection{Clauses}
+\begin{itemize}
+  \item \textbf{Licence :} à choisir avant publication (par exemple MIT).
+  \item \textbf{Propriété et responsabilité :} le code appartient aux auteurs, qui restent responsables de ce qu'ils rendent et doivent pouvoir expliquer chaque partie.
+  \item \textbf{Niveaux de service (SLA/SLO) :} sans objet pour un projet académique.
+  \item \textbf{Réversibilité :} le dépôt Git contient le code, les tests et la documentation nécessaires pour qu'une autre personne reprenne le projet.
+\end{itemize}
+
+% =====================================================================
+\appendix
+\section{Grammaire de Toy}
+
+\begin{lstlisting}
+program     = { struct_decl | fun_decl } ;
+struct_decl = 'struct' ID '{' { ID ':' type ';' } '}' ;
+fun_decl    = 'fun' ID '(' [ param { ',' param } ] ')' ':' type block ;
+param       = ID ':' type ;
+type        = ( 'int' | 'bool' | ID ) { '[' ']' } ;
+block       = '{' { statement } '}' ;
+statement   = 'var' ID ':' type [ '=' expr ] ';'
+            | lvalue '=' expr ';'
+            | 'if' '(' expr ')' block [ 'else' ( block | statement ) ]
+            | 'while' '(' expr ')' block
+            | 'return' [ expr ] ';'
+            | 'print' '(' expr ')' ';'
+            | expr ';'
+            | block ;
+expr        = unary { binary_op unary } ;
+unary       = ( '-' | '!' ) unary | postfix ;
+postfix     = primary { '.' ID | '[' expr ']' } ;
+primary     = INT | 'true' | 'false' | 'null'
+            | ID [ '(' [ args ] ')' ]
+            | 'new' base_type [ '[' expr ']' ]
+            | '(' expr ')' ;
+\end{lstlisting}
+
+Priorités des opérateurs binaires, de la plus faible à la plus forte : \code{||}, \code{&&}, \code{==} \code{!=}, \code{<} \code{<=} \code{>} \code{>=}, \code{+} \code{-}, \code{*} \code{/} \texttt{\%}. Les commentaires commencent par \code{//}.
+
+\section{Programme d'exemple (\texttt{tests/list.toy})}
+
+\begin{lstlisting}
+struct Node { val: int; next: Node; }
+
+fun push(head: Node, v: int): Node {
+    var n: Node = new Node;
+    n.val = v;
+    n.next = head;
+    return n;
+}
+
+fun main(): int {
+    var list: Node = null;
+    var i: int = 0;
+    while (i < 1000000) {
+        list = push(null, i);   // les anciennes listes deviennent des déchets
+        i = i + 1;
+    }
+    print(list.val);
+    return 0;
+}
+\end{lstlisting}
+
+\section{Glossaire}
+\begin{description}[style=nextline,leftmargin=0pt]
+  \item[GC précis] ramasse-miettes qui sait exactement quels emplacements contiennent des pointeurs.
+  \item[Racine] variable locale ou valeur de pile qui référence un objet du tas ; point de départ du parcours.
+  \item[Stack map] table qui indique, pour un point du programme, quels emplacements du cadre d'appel contiennent des références.
+  \item[Point de sûreté (\emph{safepoint})] instruction où une collecte peut avoir lieu (allocation, appel).
+  \item[Mark-and-Sweep] marque les objets atteignables depuis les racines, puis libère tous les autres.
+  \item[Stop-and-Copy (Cheney)] copie les objets vivants d'une moitié du tas vers l'autre, en laissant des pointeurs de redirection.
+  \item[Descripteur de type] table qui décrit la disposition d'un objet, en particulier quels champs sont des pointeurs.
+\end{description}
+
+\end{document}

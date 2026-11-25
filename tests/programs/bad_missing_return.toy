@@ -1,0 +1,7 @@
+// @compile-error missing return in function 'f'
+fun f(a: bool): int {
+    if (a) { return 1; }
+}
+fun main(): int {
+    return f(true);
+}

@@ -1,0 +1,27 @@
+// A list of 50000 nodes stays alive (1.6 MB) while two million short-lived objects are made.
+// Each collection has to deal with the live list: this is where the two collectors differ.
+struct Node { val: int; next: Node; }
+fun make(v: int, next: Node): Node {
+    var n: Node = new Node;
+    n.val = v;
+    n.next = next;
+    return n;
+}
+fun main(): int {
+    var live: Node = null;
+    var i: int = 0;
+    while (i < 50000) { live = make(i, live); i = i + 1; }
+    var round: int = 0;
+    var last: int = 0;
+    while (round < 2000000) {
+        var n: Node = make(round, null);
+        last = n.val;
+        round = round + 1;
+    }
+    var count: int = 0;
+    var p: Node = live;
+    while (p != null) { count = count + 1; p = p.next; }
+    print(count);
+    print(last);
+    return 0;
+}

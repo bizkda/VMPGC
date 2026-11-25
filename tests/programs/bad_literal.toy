@@ -1,0 +1,4 @@
+// @compile-error integer literal too large
+fun main(): int {
+    return 2147483648;
+}

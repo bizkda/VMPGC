@@ -1,0 +1,4 @@
+// @compile-error missing function 'main'
+fun helper(): int {
+    return 1;
+}

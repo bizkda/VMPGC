@@ -1,0 +1,5 @@
+// @compile-error type mismatch: expected int, found bool
+fun main(): int {
+    var x: int = true;
+    return 0;
+}

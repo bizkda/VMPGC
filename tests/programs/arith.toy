@@ -1,0 +1,36 @@
+// Arithmetic, precedence, comparisons and booleans. Integers are 64 bits and wrap around.
+fun main(): int {
+    print(1 + 2 * 3);
+    print((1 + 2) * 3);
+    print(10 - 3 - 2);
+    print(17 / 5);
+    print(17 % 5);
+    print(-17 / 5);          // division truncates toward zero
+    print(-17 % 5);          // the sign of % is the sign of the dividend
+    print(17 / -5);
+    print(7 - -3);
+
+    var big: int = 2147483647;
+    print(big + 1);
+    print(big * big);
+    print(big * big * 2);
+    print(big * big * 4);                 // wraps around modulo 2^64
+    var two_to_the_31: int = big + 1;
+    var smallest: int = two_to_the_31 * two_to_the_31 * 2;   // 2^63 wraps to the smallest int
+    print(smallest);
+    print(smallest / -1);                 // overflow wraps instead of crashing
+    print(smallest % -1);
+
+    print(1 < 2);
+    print(2 <= 1);
+    print(3 == 3);
+    print(3 != 3);
+    print(5 > 4);
+    print(4 >= 5);
+    print(true && false);
+    print(true || false);
+    print(!true);
+    print(!false);
+    print((1 < 2) == (3 < 4));
+    return 0;
+}

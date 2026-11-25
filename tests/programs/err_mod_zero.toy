@@ -1,0 +1,7 @@
+// @exit 100
+// @stderr modulo by zero
+fun main(): int {
+    var zero: int = 0;
+    print(10 % zero);
+    return 0;
+}

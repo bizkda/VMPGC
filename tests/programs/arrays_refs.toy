@@ -1,0 +1,25 @@
+// @heap 16384
+// @expect-gc
+// An array of references: the array and the objects it points to must survive and move together.
+struct Cell { value: int; }
+fun main(): int {
+    var cells: Cell[] = new Cell[100];
+    var i: int = 0;
+    while (i < 100) {
+        var c: Cell = new Cell;
+        c.value = i * i;
+        cells[i] = c;
+        i = i + 1;
+    }
+    var round: int = 0;
+    while (round < 3000) {
+        var junk: Cell[] = new Cell[10];
+        junk[0] = new Cell;
+        round = round + 1;
+    }
+    var sum: int = 0;
+    i = 0;
+    while (i < 100) { sum = sum + cells[i].value; i = i + 1; }
+    print(sum);
+    return 0;
+}

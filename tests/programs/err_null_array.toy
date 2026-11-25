@@ -1,0 +1,7 @@
+// @exit 100
+// @stderr null reference
+fun main(): int {
+    var a: int[] = null;
+    print(a[0]);
+    return 0;
+}

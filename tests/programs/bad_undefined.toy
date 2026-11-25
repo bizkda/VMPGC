@@ -1,0 +1,5 @@
+// @compile-error undefined variable 'y'
+fun main(): int {
+    y = 1;
+    return 0;
+}

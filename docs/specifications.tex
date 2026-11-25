@@ -1,0 +1,610 @@
+\documentclass[11pt,a4paper]{article}
+
+% ---------- encodage, langue, mise en page ----------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\IfFileExists{lmodern.sty}{\usepackage{lmodern}}{}
+\usepackage[french]{babel}
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage{microtype}
+
+% ---------- tableaux, listes, couleurs ----------
+\usepackage{booktabs,longtable,array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,fit}
+\usepackage{fancyhdr}
+\usepackage[colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black,
+            pdftitle={Spécifications VMPGC},
+            pdfauthor={Mansour Abderezak, Badreddine Mamouni}]{hyperref}
+
+\setlist{itemsep=2pt,topsep=4pt}
+\renewcommand{\arraystretch}{1.25}
+\setlength{\parskip}{4pt}
+\setlength{\parindent}{0pt}
+\setlength{\emergencystretch}{3em}
+
+% code en ligne : \code{type_id} fonctionne sans échapper les caractères spéciaux
+\newcommand{\code}[1]{\texttt{\detokenize{#1}}}
+
+% ---------- informations du document ----------
+\newcommand{\encadrant}{\textit{à compléter}}
+
+% ---------- en-têtes et pieds de page ----------
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{\small Spécifications --- VMPGC}
+\rhead{\small Université de Béjaïa}
+\cfoot{\small\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ---------- listings ----------
+\lstset{
+  basicstyle=\ttfamily\footnotesize,
+  frame=single,
+  rulecolor=\color{black!30},
+  backgroundcolor=\color{black!3},
+  breaklines=true,
+  columns=fullflexible,
+  keepspaces=true,
+  inputencoding=utf8,
+  extendedchars=true,
+  literate={é}{{\'e}}1 {è}{{\`e}}1 {ê}{{\^e}}1 {à}{{\`a}}1 {ç}{{\c c}}1
+}
+
+\begin{document}
+
+% =====================================================================
+%  PAGE DE TITRE
+% =====================================================================
+\begin{titlepage}
+\centering
+{\large Université de Béjaïa\par}
+\vspace{2mm}
+{\normalsize Cycle ingénieur --- 4\textsuperscript{e} année Informatique\par}
+
+\vspace{3cm}
+{\Large\bfseries Spécifications fonctionnelles et techniques\par}
+\vspace{6mm}
+{\fontsize{34}{40}\selectfont\bfseries VMPGC\par}
+\vspace{6mm}
+{\large Compilateur Toy et machine virtuelle\\à ramasse-miettes précis\par}
+\vspace{8mm}
+{\normalsize Projet 4 : machine virtuelle avec ramasse-miettes (\emph{Garbage Collector}) précis\par}
+
+\vfill
+\begin{tabular}{rl}
+  \textbf{Rédigé par :} & Mansour Abderezak \\
+                        & Badreddine Mamouni \\[4mm]
+  \textbf{Encadrant :}  & \encadrant \\[4mm]
+  \textbf{Dépôt :}      & \url{https://github.com/bizkda/VMPGC} \\
+\end{tabular}
+
+\vspace{1.5cm}
+Version 1.1 --- 24 novembre 2026\\
+Année universitaire 2026--2027
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+% =====================================================================
+\section{Présentation du document}
+
+\subsection{Objet}
+Ce document décrit précisément ce que fait le système VMPGC : le langage Toy accepté par le compilateur, le comportement du compilateur, le bytecode et son format de fichier, puis le comportement de la machine virtuelle et de ses deux ramasse-miettes. Il répond au cahier des charges, qui définit le besoin et le périmètre, et sert de référence pour écrire le code et les tests.
+
+\subsection{Rédacteurs et historique des mises à jour}
+
+\begin{longtable}{@{}p{0.10\textwidth} p{0.20\textwidth} p{0.28\textwidth} p{0.28\textwidth}@{}}
+\toprule
+\textbf{Version} & \textbf{Date} & \textbf{Rédacteurs} & \textbf{Modification} \\
+\midrule
+\endhead
+1.0 & 27 octobre 2026 & Mansour Abderezak, Badreddine Mamouni & Création du document \\
+1.1 & 24 novembre 2026 & Mansour Abderezak, Badreddine Mamouni & Alignement avec l'implémentation : taille du bloc dans l'en-tête, contrôles du vérificateur de tas, validation du fichier \code{.tbc} par la VM \\
+\bottomrule
+\end{longtable}
+
+\subsection{Documents de référence}
+\begin{itemize}
+  \item Cahier des charges VMPGC, version 1.1 (noté \emph{CDC} dans la suite).
+  \item Sujet du projet 4 : machine virtuelle avec ramasse-miettes précis.
+\end{itemize}
+
+\subsection{Conventions}
+\begin{itemize}
+  \item Les identifiants sont stables pour permettre la traçabilité : \textbf{F} (fonctionnalité), \textbf{UC} (cas d'utilisation), \textbf{T} (règle de typage), \textbf{RG} (règle de gestion).
+  \item \og doit \fg{} exprime une exigence obligatoire ; \og peut \fg{} une option.
+  \item Les valeurs marquées \emph{(proposé)} sont des choix de conception à confirmer pendant le jalon indiqué.
+  \item Les entiers du bytecode et du format de fichier sont en little-endian.
+\end{itemize}
+
+% =====================================================================
+\section{Définition du périmètre fonctionnel}
+
+Le périmètre est défini avec la démarche de l'\emph{impact mapping}, en répondant à quatre questions.
+
+\begin{longtable}{@{}p{0.28\textwidth} p{0.60\textwidth}@{}}
+\toprule
+\textbf{Question} & \textbf{Réponse} \\
+\midrule
+\endhead
+Quel est l'objectif du logiciel ? & Compiler des programmes Toy en bytecode et les exécuter sur une machine virtuelle dont le ramasse-miettes récupère la mémoire inutile de façon précise, sans jamais libérer un objet vivant. \\
+Qui sont les utilisateurs finaux ? & Le développeur Toy, l'évaluateur (encadrant) et les auteurs du projet. \\
+Quels bénéfices recherchent-ils ? & Écrire des programmes sans gérer la mémoire à la main ; vérifier que le GC est correct ; comparer Mark-and-Sweep et Stop-and-Copy avec des mesures. \\
+Quelles fonctionnalités y mènent ? & Compilateur Toy (F1), machine virtuelle (F2), outils de vérification et de mesure (F3), interfaces en ligne de commande (F4). \\
+\bottomrule
+\end{longtable}
+
+Le périmètre exclu est celui du CDC (code natif, GC générationnel ou concurrent, multithreading, chaînes, flottants, héritage, tableaux multidimensionnels, optimisations).
+
+% =====================================================================
+\section{Profils d'utilisateurs et cas d'utilisation}
+
+\begin{longtable}{@{}p{0.06\textwidth} p{0.13\textwidth} p{0.36\textwidth} p{0.28\textwidth}@{}}
+\toprule
+\textbf{ID} & \textbf{Acteur} & \textbf{Scénario nominal} & \textbf{Scénarios alternatifs} \\
+\midrule
+\endhead
+UC1 & Développeur Toy & Compile un programme : lance \code{toyc.py prog.toy}. Le compilateur analyse, vérifie les types, écrit \code{prog.tbc} et se termine avec le code 0. & Erreur lexicale, syntaxique ou de type : message \code{ligne:colonne}, aucun \code{.tbc} produit, code 1. Fichier introuvable : message, code 1. \\
+UC2 & Développeur Toy & Exécute un programme compilé : lance \code{gcvm prog.tbc}. La sortie de \code{print} s'affiche, la mémoire est récupérée automatiquement. & Fichier \code{.tbc} invalide : message, code 103. Erreur d'exécution : message sur la sortie d'erreur, code 100. \\
+UC3 & Évaluateur & Choisit l'algorithme et la taille du tas avec \code{--gc} et \code{--heap}, puis compare les résultats. & Valeur d'option invalide : message d'usage, code 1. \\
+UC4 & Évaluateur & Active \code{--stress} : une collecte a lieu à chaque allocation et le vérificateur contrôle le tas après chaque collecte. & Anomalie détectée : message précis, code 102. \\
+UC5 & Évaluateur & Active \code{--gc-stats} et lit les statistiques de collecte en fin d'exécution. & --- \\
+UC6 & Auteurs & Lancent la suite de tests : programmes valides (sortie attendue) et invalides (erreur attendue). & Un test échoue : le jalon n'est pas validé. \\
+\bottomrule
+\end{longtable}
+
+% =====================================================================
+\section{Arborescence fonctionnelle}
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+  root/.style={draw, rounded corners=2pt, font=\small\bfseries, fill=black!8,
+               minimum height=7mm, minimum width=1.6cm},
+  mod/.style={draw, rounded corners=2pt, font=\footnotesize\bfseries,
+              minimum height=7mm, text width=3.1cm, align=center, fill=black!4},
+  leaf/.style={draw, rounded corners=2pt, font=\footnotesize,
+               minimum height=6mm, text width=7.0cm, align=left, anchor=west}
+]
+  \node[root] (r) at (0,-5.25) {VMPGC};
+
+  \node[mod] (m1) at (3.6,-1.5)   {F1 Compilateur Toy};
+  \node[mod] (m2) at (3.6,-5.25)  {F2 Machine virtuelle};
+  \node[mod] (m3) at (3.6,-8.25)  {F3 Vérification et mesure};
+  \node[mod] (m4) at (3.6,-10.125){F4 Lignes de commande};
+
+  \node[leaf] (a0)  at (6.6,0)      {F1.1 Analyse lexicale};
+  \node[leaf] (a1)  at (6.6,-0.75)  {F1.2 Analyse syntaxique (AST)};
+  \node[leaf] (a2)  at (6.6,-1.5)   {F1.3 Vérification des types};
+  \node[leaf] (a3)  at (6.6,-2.25)  {F1.4 Génération du bytecode et des stack maps};
+  \node[leaf] (a4)  at (6.6,-3.0)   {F1.5 Désassembleur};
+  \node[leaf] (b0)  at (6.6,-3.75)  {F2.1 Chargement du fichier .tbc};
+  \node[leaf] (b1)  at (6.6,-4.5)   {F2.2 Interpréteur de bytecode};
+  \node[leaf] (b2)  at (6.6,-5.25)  {F2.3 Tas et allocation};
+  \node[leaf] (b3)  at (6.6,-6.0)   {F2.4 Ramasse-miettes Mark-and-Sweep};
+  \node[leaf] (b4)  at (6.6,-6.75)  {F2.5 Ramasse-miettes Stop-and-Copy};
+  \node[leaf] (c0)  at (6.6,-7.5)   {F3.1 Mode stress};
+  \node[leaf] (c1)  at (6.6,-8.25)  {F3.2 Vérificateur de tas};
+  \node[leaf] (c2)  at (6.6,-9.0)   {F3.3 Statistiques de GC};
+  \node[leaf] (d0)  at (6.6,-9.75)  {F4.1 Commande du compilateur};
+  \node[leaf] (d1)  at (6.6,-10.5)  {F4.2 Commande de la VM};
+
+  \foreach \m in {m1,m2,m3,m4} { \draw (r.east) -- ++(0.5,0) |- (\m.west); }
+  \foreach \l in {a0,a1,a2,a3,a4} { \draw (m1.east) -- ++(0.4,0) |- (\l.west); }
+  \foreach \l in {b0,b1,b2,b3,b4} { \draw (m2.east) -- ++(0.4,0) |- (\l.west); }
+  \foreach \l in {c0,c1,c2} { \draw (m3.east) -- ++(0.4,0) |- (\l.west); }
+  \foreach \l in {d0,d1} { \draw (m4.east) -- ++(0.4,0) |- (\l.west); }
+\end{tikzpicture}
+\caption{Arborescence des fonctionnalités de VMPGC}
+\end{figure}
+
+% =====================================================================
+\section{Priorités et dépendances}
+
+Les fonctionnalités sont classées avec la méthode MoSCoW : \emph{Must} (indispensable), \emph{Should} (important), \emph{Could} (si le temps le permet).
+
+\begin{longtable}{@{}p{0.08\textwidth} p{0.36\textwidth} p{0.11\textwidth} p{0.17\textwidth} p{0.10\textwidth}@{}}
+\toprule
+\textbf{ID} & \textbf{Fonctionnalité} & \textbf{Priorité} & \textbf{Dépend de} & \textbf{Jalon} \\
+\midrule
+\endhead
+F1.1 & Analyse lexicale & Must & --- & M1 \\
+F1.2 & Analyse syntaxique & Must & F1.1 & M1 \\
+F1.3 & Vérification des types & Must & F1.2 & M2 \\
+F1.4 & Génération du bytecode et des stack maps & Must & F1.3 & M3 \\
+F1.5 & Désassembleur & Should & F1.4 & M3 \\
+F2.1 & Chargement du fichier \code{.tbc} & Must & F1.4 & M4 \\
+F2.2 & Interpréteur de bytecode & Must & F2.1 & M4 \\
+F2.3 & Tas et allocation & Must & F2.2 & M4 \\
+F2.4 & Mark-and-Sweep & Must & F2.3, F1.4 & M5 \\
+F2.5 & Stop-and-Copy & Should & F2.3, F1.4 & M6 \\
+F3.1 & Mode stress & Should & F2.4 & M5, M7 \\
+F3.2 & Vérificateur de tas & Should & F2.4 & M5, M7 \\
+F3.3 & Statistiques de GC & Should & F2.4 & M5 \\
+F4.1 & Commande du compilateur & Must & F1.4 & M3 \\
+F4.2 & Commande de la VM & Must & F2.2 & M4 \\
+\bottomrule
+\end{longtable}
+
+L'ordre des jalons suit les dépendances : le bytecode (F1.4) doit être figé avant la VM (F2), et les stack maps doivent exister avant tout ramasse-miettes précis (F2.4).
+
+% =====================================================================
+\section{Spécification du langage Toy}
+
+La grammaire complète est donnée dans l'annexe A du CDC. Cette section précise ce que chaque construction signifie et quelles règles le compilateur vérifie.
+
+\subsection{Éléments lexicaux}
+\begin{itemize}
+  \item Un \textbf{identifiant} commence par une lettre ou \code{_}, suivie de lettres, chiffres ou \code{_}.
+  \item Les \textbf{mots réservés} sont : \code{struct fun var if else while return print new null true false int bool}.
+  \item Un \textbf{entier littéral} est une suite de chiffres décimaux (le signe moins est l'opérateur unaire).
+  \item Les espaces, tabulations et sauts de ligne séparent les éléments. Un commentaire commence par \code{//} et va jusqu'à la fin de la ligne.
+\end{itemize}
+
+\subsection{Types et valeurs}
+
+\begin{longtable}{@{}p{0.20\textwidth} p{0.68\textwidth}@{}}
+\toprule
+\textbf{Type} & \textbf{Description} \\
+\midrule
+\endhead
+\code{int} & entier signé sur 64 bits ; le dépassement de capacité boucle (arithmétique modulo $2^{64}$) ; \code{/} tronque vers zéro et le signe de \code{\%} est celui du dividende \\
+\code{bool} & \code{true} ou \code{false}, représentés par 1 et 0 \\
+struct \code{S} & type référence ; les champs ont des types \code{int}, \code{bool}, struct ou tableau ; une struct peut se référencer elle-même ou référencer une struct déclarée plus loin \\
+tableau \code{T[]} & type référence ; \code{T} est \code{int}, \code{bool} ou une struct ; longueur fixée à la création ; indices de 0 à $n-1$ \\
+\code{null} & référence nulle, utilisable pour tout type struct ou tableau \\
+\bottomrule
+\end{longtable}
+
+\subsection{Déclarations}
+\begin{itemize}
+  \item Les structs et les fonctions sont globales ; leur ordre de déclaration est indifférent.
+  \item Une fonction a zéro ou plusieurs paramètres typés et \textbf{un type de retour obligatoire} (il n'existe pas de type \code{void}).
+  \item Le programme doit contenir \code{fun main(): int} sans paramètre. C'est le point d'entrée.
+  \item Une variable locale est visible de sa déclaration jusqu'à la fin du bloc qui la contient. Redéclarer un nom déjà visible est une erreur (pas de masquage).
+  \item Sans initialiseur, une variable vaut \code{0}, \code{false} ou \code{null} selon son type. Il en va de même des champs d'un objet créé par \code{new} et des éléments d'un tableau créé par \code{new T[n]}.
+\end{itemize}
+
+\subsection{Règles de typage}
+
+On note $S \preceq T$ la compatibilité de $S$ avec $T$ : $S = T$, ou $S$ est le type de \code{null} et $T$ est une struct ou un tableau.
+
+\begin{longtable}{@{}p{0.07\textwidth} p{0.28\textwidth} p{0.52\textwidth}@{}}
+\toprule
+\textbf{Réf.} & \textbf{Construction} & \textbf{Règle} \\
+\midrule
+\endhead
+T1 & \code{var x: T = e;} & le type de \code{e} est compatible avec \code{T} \\
+T2 & \code{lv = e;} & \code{lv} est une variable, un champ ou un élément de tableau ; le type de \code{e} est compatible avec celui de \code{lv} \\
+T3 & \code{if (c)}, \code{while (c)} & \code{c} est de type \code{bool} \\
+T4 & \code{return e;} & le type de \code{e} est compatible avec le type de retour ; \code{return;} sans valeur est interdit \\
+T5 & \code{f(a1, ..., an)} & \code{f} existe, \code{n} égale le nombre de paramètres, chaque \code{ai} est compatible avec le paramètre correspondant \\
+T6 & \code{+ - * / \%} et \code{-} unaire & opérandes \code{int}, résultat \code{int} \\
+T7 & \code{< <= > >=} & opérandes \code{int}, résultat \code{bool} \\
+T8 & \code{== !=} & deux \code{int}, ou deux \code{bool}, ou deux références dont l'une est compatible avec l'autre ; résultat \code{bool} \\
+T9 & \texttt{\&\&}\ \code{||}\ \code{!} & opérandes \code{bool}, résultat \code{bool} \\
+T10 & \code{a.f} & \code{a} est une struct qui possède le champ \code{f} ; le type est celui du champ \\
+T11 & \code{a[i]} & \code{a} est un tableau et \code{i} est \code{int} ; le type est celui des éléments \\
+T12 & \code{new S}, \code{new T[n]} & \code{S} est une struct ; \code{n} est \code{int} ; \code{new T[n]} a le type \code{T[]} \\
+T13 & \code{print(e);} & \code{e} est de type \code{int} ou \code{bool} \\
+T14 & instruction expression & l'expression est un appel de fonction \\
+T15 & noms et types & toute variable, fonction, struct et tout champ utilisé est déclaré \\
+T16 & fonction & tout chemin d'exécution se termine par \code{return} \\
+\bottomrule
+\end{longtable}
+
+\subsection{Sémantique d'exécution}
+\begin{itemize}
+  \item Les expressions sont évaluées de gauche à droite, arguments d'appel compris.
+  \item Les opérateurs \texttt{\&\&} et \code{||} sont paresseux : l'opérande de droite n'est évalué que si nécessaire.
+  \item \code{==} et \code{!=} sur des références comparent l'identité (même objet), pas le contenu.
+  \item \code{print(e);} écrit la valeur sur la sortie standard, suivie d'un saut de ligne : un entier en décimal, un booléen sous la forme \code{true} ou \code{false}.
+  \item Les erreurs d'exécution sont : division ou modulo par zéro, déréférencement de \code{null}, indice hors bornes, taille de tableau négative, profondeur d'appel excessive, mémoire épuisée.
+\end{itemize}
+
+% =====================================================================
+\section{Spécification du compilateur (F1, F4.1)}
+
+\subsection{Interface en ligne de commande}
+
+\begin{lstlisting}
+python3 compiler/toyc.py <source.toy> [-o <sortie.tbc>] [--dump]
+\end{lstlisting}
+
+\begin{itemize}
+  \item Sans \code{-o}, la sortie porte le nom de la source avec l'extension \code{.tbc}.
+  \item \code{--dump} affiche le bytecode lisible (désassemblage, F1.5) sur la sortie standard.
+  \item Code de sortie : 0 si la compilation réussit, 1 sinon.
+  \item En cas d'erreur, aucun fichier \code{.tbc} n'est produit, et un message est écrit sur la sortie d'erreur.
+\end{itemize}
+
+\subsection{Chaîne de traitement}
+
+\begin{longtable}{@{}p{0.08\textwidth} p{0.20\textwidth} p{0.24\textwidth} p{0.28\textwidth}@{}}
+\toprule
+\textbf{ID} & \textbf{Passe} & \textbf{Entrée} & \textbf{Sortie} \\
+\midrule
+\endhead
+F1.1 & Lexer & texte source & liste de jetons (type, valeur, ligne, colonne) \\
+F1.2 & Parser & jetons & arbre syntaxique (AST) \\
+F1.3 & Vérificateur de types & AST & AST annoté : type de chaque expression, indicateur \og référence ou non \fg{} \\
+F1.4 & Générateur de code & AST annoté & fonctions, instructions, descripteurs de types, stack maps \\
+F1.5 & Désassembleur & fichier \code{.tbc} ou structures internes & texte lisible \\
+\bottomrule
+\end{longtable}
+
+\subsection{Messages d'erreur}
+Le format est \code{fichier:ligne:colonne: message}, et les messages sont rédigés en anglais, comme dans le lexer déjà écrit. Le compilateur s'arrête à la première erreur lexicale ou syntaxique ; le vérificateur de types peut en signaler plusieurs.
+
+\begin{longtable}{@{}p{0.34\textwidth} p{0.54\textwidth}@{}}
+\toprule
+\textbf{Cas} & \textbf{Exemple de message} \\
+\midrule
+\endhead
+Caractère inconnu & \code{unexpected character '@'} \\
+Jeton inattendu & \texttt{expected ';', found '\}'} \\
+Variable ou fonction inconnue & \code{undefined variable 'x'} \\
+Champ inconnu & \code{unknown field 'next2' in struct 'Node'} \\
+Types incompatibles & \code{type mismatch: expected int, found bool} \\
+Mauvais nombre d'arguments & \code{wrong number of arguments for 'push': expected 2, found 1} \\
+Déclaration en double & \code{duplicate declaration of 'x'} \\
+Absence de \code{main} & \code{missing function 'main'} \\
+Chemin sans \code{return} & \code{missing return in function 'f'} \\
+\bottomrule
+\end{longtable}
+
+% =====================================================================
+\section{Spécification du bytecode et du fichier .tbc (F1.4, F2.1)}
+
+\subsection{Modèle d'exécution}
+\begin{itemize}
+  \item La VM est une machine à pile. Toutes les valeurs occupent 64 bits : entier, booléen (0 ou 1) ou référence (adresse d'un objet, 0 pour \code{null}).
+  \item Chaque appel de fonction crée un \textbf{cadre} : d'abord les variables locales (paramètres en premier, dans l'ordre), puis la pile d'opérandes de la fonction.
+  \item À l'entrée d'une fonction, les locales qui ne sont pas des paramètres sont mises à zéro.
+  \item Chaque déclaration de variable reçoit son \textbf{propre emplacement} pour toute la fonction, qui ne change jamais de type. C'est ce qui permet de décrire chaque emplacement par un seul bit \og référence ou non \fg{}.
+  \item Une instruction occupe 8 octets : l'octet 0 est le code opération, les octets 4 à 7 sont l'opérande entier signé sur 32 bits (0 s'il n'y en a pas). Les cibles de saut sont des \emph{indices d'instruction} dans le tableau de code.
+\end{itemize}
+
+\subsection{Jeu d'instructions}
+
+Notation de pile : $\ldots\ a\ b \rightarrow \ldots\ r$ signifie que $a$ et $b$ (sommet) sont dépilés et que $r$ est empilé.
+
+\begin{longtable}{@{}p{0.16\textwidth} p{0.13\textwidth} p{0.21\textwidth} p{0.34\textwidth}@{}}
+\toprule
+\textbf{Instruction} & \textbf{Opérande} & \textbf{Pile} & \textbf{Comportement} \\
+\midrule
+\endhead
+\code{PUSH_INT} & \code{n} & $\ldots \rightarrow \ldots\ n$ & empile l'entier \code{n} (aussi pour \code{true} = 1 et \code{false} = 0) \\
+\code{PUSH_NULL} & --- & $\ldots \rightarrow \ldots\ 0$ & empile la référence nulle \\
+\code{POP} & --- & $\ldots\ a \rightarrow \ldots$ & supprime le sommet (résultat d'un appel non utilisé) \\
+\code{LOAD_LOCAL} & \code{i} & $\ldots \rightarrow \ldots\ v$ & empile la locale numéro \code{i} \\
+\code{STORE_LOCAL} & \code{i} & $\ldots\ v \rightarrow \ldots$ & range le sommet dans la locale \code{i} \\
+\code{ADD SUB MUL} & --- & $\ldots\ a\ b \rightarrow \ldots\ r$ & arithmétique sur 64 bits, modulo $2^{64}$ \\
+\code{DIV MOD} & --- & $\ldots\ a\ b \rightarrow \ldots\ r$ & erreur d'exécution si $b = 0$ \\
+\code{NEG} & --- & $\ldots\ a \rightarrow \ldots\ {-a}$ & opposé \\
+\code{NOT} & --- & $\ldots\ a \rightarrow \ldots\ r$ & $r = 1$ si $a = 0$, sinon $0$ \\
+\code{EQ NE LT LE GT GE} & --- & $\ldots\ a\ b \rightarrow \ldots\ r$ & comparaison signée ; $r$ vaut 0 ou 1 \\
+\code{JMP} & \code{t} & inchangée & saute à l'instruction \code{t} \\
+\code{JZ} & \code{t} & $\ldots\ c \rightarrow \ldots$ & dépile \code{c} ; saute à \code{t} si $c = 0$ \\
+\code{CALL} & \code{f} & $\ldots\ a_1 \ldots a_n \rightarrow \ldots\ r$ & appelle la fonction \code{f} ; \code{n} vient de la table des fonctions ; les arguments deviennent les premières locales de l'appelé \\
+\code{RET} & --- & $\ldots\ v \rightarrow$ & termine la fonction et empile \code{v} chez l'appelant ; dans \code{main}, arrête le programme \\
+\code{NEW} & \code{t} & $\ldots \rightarrow \ldots\ p$ & alloue un objet du type \code{t}, champs à zéro \\
+\code{NEW_ARRAY} & \code{t} & $\ldots\ n \rightarrow \ldots\ p$ & alloue un tableau de \code{n} éléments à zéro ; erreur si $n < 0$ \\
+\code{GETFIELD} & \code{i} & $\ldots\ p \rightarrow \ldots\ v$ & lit le champ \code{i} ; erreur si $p = $ \code{null} \\
+\code{PUTFIELD} & \code{i} & $\ldots\ p\ v \rightarrow \ldots$ & écrit \code{v} dans le champ \code{i} ; erreur si $p = $ \code{null} \\
+\code{ALOAD} & --- & $\ldots\ p\ i \rightarrow \ldots\ v$ & lit l'élément \code{i} ; erreur si $p = $ \code{null} ou \code{i} hors bornes \\
+\code{ASTORE} & --- & $\ldots\ p\ i\ v \rightarrow \ldots$ & écrit l'élément \code{i} ; mêmes erreurs \\
+\code{PRINT_INT} & --- & $\ldots\ a \rightarrow \ldots$ & affiche l'entier suivi d'un saut de ligne \\
+\code{PRINT_BOOL} & --- & $\ldots\ a \rightarrow \ldots$ & affiche \code{true} ou \code{false} suivi d'un saut de ligne \\
+\bottomrule
+\end{longtable}
+
+Les opérateurs \texttt{\&\&} et \code{||} n'ont pas d'instruction propre : le compilateur les traduit avec \code{JZ} et \code{JMP} pour obtenir l'évaluation paresseuse.
+
+\subsection{Format du fichier .tbc}
+
+\begin{longtable}{@{}p{0.20\textwidth} p{0.68\textwidth}@{}}
+\toprule
+\textbf{Section} & \textbf{Contenu} \\
+\midrule
+\endhead
+En-tête & 4 octets \code{TBC1} (identifiant et version du format) \\
+Types & entier 32 bits \code{n_types}, puis par type : 1 octet de genre (1 = struct, 2 = tableau de valeurs, 3 = tableau de références), un entier 32 bits \code{nb_champs}, et un masque 64 bits des champs qui sont des références (le bit $i$ vaut 1 si le champ $i$ est une référence). Les \code{type_id} commencent à 1 ; 0 est invalide \\
+Fonctions & entier 32 bits \code{n_fonctions}, puis par fonction : indice de la première instruction, nombre de paramètres, nombre de locales, longueur et octets du nom ; puis l'indice de \code{main} \\
+Code & entier 32 bits \code{n_instructions}, puis les instructions de 8 octets \\
+Stack maps & entier 32 bits \code{n_cartes}, puis par carte : indice d'instruction, profondeur de pile, masque 64 bits des locales qui sont des références, masque 64 bits des emplacements de pile qui sont des références \\
+\bottomrule
+\end{longtable}
+
+\subsection{Validation du fichier par la VM}
+Avant d'exécuter un fichier, la VM vérifie qu'il est cohérent : nombres de types, de fonctions, d'instructions et de cartes compatibles avec la taille du fichier ; chaque saut reste dans sa fonction ; chaque \code{CALL}, variable locale et type référencé existe ; \code{NEW} désigne une struct et \code{NEW_ARRAY} un tableau ; chaque \code{NEW}, \code{NEW_ARRAY} et \code{CALL} a exactement une stack map, et chaque stack map se trouve sur l'une de ces trois instructions. Un fichier refusé donne le code de sortie 103. La VM ne vérifie pas que le bytecode respecte la discipline de pile : elle fait confiance au compilateur sur ce point.
+
+\subsection{Stack maps}
+\begin{itemize}
+  \item Il y a une carte pour chaque \textbf{point de sûreté} : chaque instruction \code{NEW}, \code{NEW_ARRAY} et \code{CALL}.
+  \item La carte décrit l'état du cadre \textbf{juste après le dépilement des opérandes} de l'instruction. Pour \code{NEW_ARRAY}, la taille n'est donc plus sur la pile ; pour \code{CALL}, les arguments ne sont plus sur la pile de l'appelant, car ils sont devenus les premières locales de l'appelé, décrites par la carte de l'appelé.
+  \item Un cadre suspendu mémorise l'indice de son instruction \code{CALL} ; c'est la clé qui sert à retrouver sa carte.
+  \item Le bit $i$ d'un masque vaut 1 si l'emplacement $i$ contient une référence (éventuellement \code{null}), 0 sinon.
+\end{itemize}
+
+% =====================================================================
+\section{Spécification de la VM, du tas et du GC (F2, F3, F4.2)}
+
+\subsection{Interface en ligne de commande}
+
+\begin{lstlisting}
+vm/gcvm <programme.tbc> [--gc=ms|copy] [--heap=<octets>]
+                        [--stress] [--verify] [--gc-stats]
+\end{lstlisting}
+
+\begin{longtable}{@{}p{0.24\textwidth} p{0.64\textwidth}@{}}
+\toprule
+\textbf{Option} & \textbf{Effet} \\
+\midrule
+\endhead
+\code{--gc=ms} (défaut) & utilise Mark-and-Sweep \\
+\code{--gc=copy} & utilise Stop-and-Copy (Cheney) \\
+\code{--heap=<octets>} & taille totale du tas ; défaut 8\,388\,608 (8 Mo). Avec \code{copy}, le tas est partagé en deux demi-espaces égaux, pour comparer les deux GC à mémoire égale \\
+\code{--stress} & collecte avant chaque allocation, et vérificateur de tas après chaque collecte \\
+\code{--verify} & vérificateur de tas après chaque collecte, sans forcer une collecte à chaque allocation \\
+\code{--gc-stats} & affiche les statistiques sur la sortie d'erreur à la fin \\
+\bottomrule
+\end{longtable}
+
+\subsection{Codes de sortie}
+
+\begin{longtable}{@{}p{0.14\textwidth} p{0.74\textwidth}@{}}
+\toprule
+\textbf{Code} & \textbf{Signification} \\
+\midrule
+\endhead
+0 à 99 & fin normale : valeur retournée par \code{main} (les valeurs supérieures à 99 sont déconseillées) \\
+1 & option ou fichier invalide en ligne de commande \\
+100 & erreur d'exécution (division par zéro, \code{null}, indice, etc.) \\
+101 & mémoire insuffisante après une collecte \\
+102 & anomalie détectée par le vérificateur de tas \\
+103 & fichier \code{.tbc} invalide \\
+\bottomrule
+\end{longtable}
+
+\subsection{Disposition des objets}
+
+Un emplacement (\emph{slot}) fait 8 octets. Chaque objet commence par un en-tête de 16 octets suivi de ses emplacements.
+
+\begin{longtable}{@{}p{0.22\textwidth} p{0.66\textwidth}@{}}
+\toprule
+\textbf{Élément} & \textbf{Contenu} \\
+\midrule
+\endhead
+Mot 0 de l'en-tête & bits 0 à 31 : \code{type_id} (0 pour un bloc libre) ; bit 32 : marqué (Mark-and-Sweep) ; bit 33 : déplacé (Stop-and-Copy) ; bits 34 à 63 : taille du bloc entier, en mots de 8 octets \\
+Mot 1 de l'en-tête & nombre d'emplacements (champs ou éléments) ; si l'objet est déplacé, nouvelle adresse (pointeur de redirection) ; dans un bloc libre, adresse du bloc libre suivant \\
+Emplacements & un par champ (struct) ou par élément (tableau), de 8 octets chacun, y compris pour \code{int} et \code{bool} \\
+\bottomrule
+\end{longtable}
+
+La taille du bloc est dans l'en-tête parce qu'un bloc peut être un peu plus grand que l'objet qu'il contient (un reste de moins de 16 octets n'est pas découpé) : cela permet de parcourir le tas bloc par bloc, ce que fait le balayage de Mark-and-Sweep. Les emplacements qui sont des références se trouvent grâce au descripteur de type : le masque des champs pour une struct, \og aucun \fg{} pour un tableau de valeurs, \og tous \fg{} pour un tableau de références.
+
+\subsection{Allocation et déclenchement du GC}
+\begin{itemize}
+  \item Une allocation qui ne trouve pas de place déclenche une collecte, puis réessaie une seule fois. Si elle échoue encore, le programme s'arrête avec le code 101.
+  \item Mark-and-Sweep alloue dans une liste de blocs libres (premier bloc assez grand) ; le balayage fusionne les blocs libres voisins.
+  \item Stop-and-Copy alloue en avançant un pointeur dans le demi-espace courant.
+  \item Avec \code{--stress}, une collecte précède chaque allocation.
+\end{itemize}
+
+\subsection{Racines et précision}
+Les racines sont uniquement les emplacements marqués \og référence \fg{} dans les stack maps de tous les cadres actifs, parcourus du plus récent au plus ancien. Aucune valeur n'est interprétée comme un pointeur parce qu'elle \emph{ressemble} à une adresse.
+
+\subsection{Mark-and-Sweep (F2.4)}
+\begin{enumerate}
+  \item \textbf{Marquage :} à partir des racines, marquer chaque objet atteignable en suivant ses champs référence. Le parcours utilise une pile explicite et \textbf{pas de récursion} : une liste de 1\,000\,000 d'éléments ne doit pas faire déborder la pile du langage C.
+  \item \textbf{Balayage :} parcourir le tas ; rendre libre tout objet non marqué, effacer les marques des autres, fusionner les blocs libres voisins.
+\end{enumerate}
+
+\subsection{Stop-and-Copy, algorithme de Cheney (F2.5)}
+\begin{enumerate}
+  \item Copier dans le demi-espace d'arrivée les objets directement référencés par les racines, en laissant un pointeur de redirection dans l'ancien objet, et mettre à jour chaque racine.
+  \item Parcourir les objets copiés avec un pointeur de balayage : copier ou rediriger chaque objet qu'ils référencent et mettre à jour le champ.
+  \item Quand le pointeur de balayage rejoint le pointeur d'allocation, échanger les deux demi-espaces.
+\end{enumerate}
+
+\subsection{Vérificateur de tas (F3.2)}
+Après une collecte, le vérificateur contrôle que :
+\begin{itemize}
+  \item chaque racine est \code{null} ou désigne le début d'un objet vivant valide ;
+  \item chaque champ référence d'un objet atteignable est \code{null} ou désigne un objet vivant valide ;
+  \item chaque \code{type_id} d'en-tête existe dans la table des types ;
+  \item avec Mark-and-Sweep, aucun objet n'est resté marqué, deux blocs libres voisins ont bien été fusionnés et la liste libre contient exactement les blocs libres ; avec Stop-and-Copy, aucun pointeur ne désigne l'ancien demi-espace ;
+  \item pour chaque cadre d'appel, la profondeur indiquée par la stack map est bien le nombre de valeurs qui se trouvent sur sa pile d'opérandes : une stack map fausse est ainsi détectée immédiatement.
+\end{itemize}
+En cas d'anomalie, il affiche l'adresse et la nature de l'erreur, puis le programme s'arrête avec le code 102.
+
+\subsection{Statistiques (F3.3)}
+Avec \code{--gc-stats}, la VM écrit sur la sortie d'erreur une ligne de la forme :
+
+\begin{lstlisting}
+[gc] algo=<ms|copy> collectes=<n> objets_alloues=<n> octets_alloues=<n>
+     octets_recuperes=<n> temps_gc_ms=<x>
+\end{lstlisting}
+
+% =====================================================================
+\section{Contraintes et règles de gestion}
+
+\begin{longtable}{@{}p{0.09\textwidth} p{0.79\textwidth}@{}}
+\toprule
+\textbf{Réf.} & \textbf{Règle} \\
+\midrule
+\endhead
+RG-01 & Un programme contient exactement une fonction \code{main(): int} sans paramètre. \\
+RG-02 & Les noms de structs et de fonctions sont uniques et différents de \code{int} et \code{bool}. \\
+RG-03 & Il n'y a pas de masquage de variable : une déclaration reçoit un emplacement local propre. \\
+RG-04 & Les valeurs par défaut sont \code{0}, \code{false} et \code{null}. \\
+RG-05 & Il n'y a aucune conversion implicite entre \code{int} et \code{bool}. \\
+RG-06 & Limites de l'implémentation : une struct a au plus 64 champs, une fonction au plus 64 locales, la pile d'une fonction contient au plus 64 emplacements à chaque point de sûreté ; la profondeur d'appel est limitée à 10\,000 cadres. Le compilateur signale un dépassement. \\
+RG-07 & Aucun entier n'est jamais traité comme un pointeur : seul le couple stack maps et descripteurs de types identifie les références. \\
+RG-08 & Le marquage de Mark-and-Sweep n'est pas récursif. \\
+RG-09 & Après une collecte Stop-and-Copy, toutes les racines et tous les champs référence sont mis à jour. \\
+RG-10 & Un programme valide ne provoque jamais de plantage du système : toute erreur d'exécution produit un message et un code de sortie défini. \\
+RG-11 & Pour un même programme, les deux GC produisent la même sortie standard. \\
+RG-12 & Une erreur de compilation ne laisse aucun fichier \code{.tbc}. \\
+\bottomrule
+\end{longtable}
+
+% =====================================================================
+\section{Traçabilité avec le cahier des charges}
+
+\begin{longtable}{@{}p{0.07\textwidth} p{0.24\textwidth} p{0.17\textwidth} p{0.34\textwidth}@{}}
+\toprule
+\textbf{CDC} & \textbf{Fonctionnalités} & \textbf{Jalons} & \textbf{Vérification} \\
+\midrule
+\endhead
+US1 & F1.1 à F1.4 & M1 à M3 & \code{list.toy} et \code{arrays.toy} compilent \\
+US2 & F1.1 à F1.3 & M1, M2 & tests négatifs : un programme invalide par erreur de la section 7 \\
+US3 & F2.2 & M4 & sorties attendues des programmes de test \\
+US4 & F2.3, F2.4 & M4, M5 & \code{list.toy} dans un tas borné \\
+US5 & F4.2 & M4 à M6 & options \code{--gc}, \code{--heap}, \code{--gc-stats} \\
+US6 & F3.1, F3.2 & M5, M7 & suite de tests complète avec \code{--stress} \\
+US7 & F2.2 & M4 & un test par erreur d'exécution \\
+\bottomrule
+\end{longtable}
+
+% =====================================================================
+\appendix
+\section{Illustration : une fonction compilée}
+
+Pour la fonction \code{push} de \code{tests/list.toy} :
+
+\begin{lstlisting}
+struct Node { val: int; next: Node; }
+
+fun push(head: Node, v: int): Node {
+    var n: Node = new Node;
+    n.val = v;
+    n.next = head;
+    return n;
+}
+\end{lstlisting}
+
+Les locales sont : $0 = \texttt{head}$, $1 = \texttt{v}$, $2 = \texttt{n}$. Les champs de \code{Node} sont : $0 = \texttt{val}$ et $1 = \texttt{next}$, donc son masque de références vaut $10_2$ (seul \code{next} est une référence). Le bytecode produit est :
+
+\begin{lstlisting}
+ 0  NEW          Node       ; carte : locales 101, pile vide
+ 1  STORE_LOCAL  2          ; n = new Node
+ 2  LOAD_LOCAL   2
+ 3  LOAD_LOCAL   1
+ 4  PUTFIELD     0          ; n.val = v
+ 5  LOAD_LOCAL   2
+ 6  LOAD_LOCAL   0
+ 7  PUTFIELD     1          ; n.next = head
+ 8  LOAD_LOCAL   2
+ 9  RET                     ; retourne n
+\end{lstlisting}
+
+La stack map de l'instruction 0 (\code{NEW}) indique : profondeur de pile 0 ; masque des locales $101_2$ (bit 0 : \code{head}, bit 2 : \code{n} sont des références, bit 1 : \code{v} est un entier). Si une collecte a lieu pendant ce \code{NEW}, le GC traite \code{head} et \code{n} (encore \code{null}) comme racines et ignore \code{v}.
+
+\end{document}

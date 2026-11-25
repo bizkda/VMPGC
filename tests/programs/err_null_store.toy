@@ -1,0 +1,10 @@
+// @exit 100
+// @stderr null reference
+struct Node { val: int; next: Node; }
+fun main(): int {
+    var n: Node = new Node;
+    n.val = 1;
+    print(n.val);
+    n.next.val = 2;                // n.next is null
+    return 0;
+}

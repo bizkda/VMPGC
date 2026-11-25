@@ -1,0 +1,7 @@
+// @compile-error unknown field 'size' in struct 'Node'
+struct Node { val: int; }
+fun main(): int {
+    var n: Node = new Node;
+    print(n.size);
+    return 0;
+}

@@ -1,0 +1,19 @@
+// Three million short-lived objects, nothing stays alive: the cheapest case for both collectors.
+struct Node { val: int; next: Node; }
+fun make(v: int, next: Node): Node {
+    var n: Node = new Node;
+    n.val = v;
+    n.next = next;
+    return n;
+}
+fun main(): int {
+    var i: int = 0;
+    var last: int = 0;
+    while (i < 3000000) {
+        var n: Node = make(i, null);
+        last = n.val;
+        i = i + 1;
+    }
+    print(last);
+    return 0;
+}

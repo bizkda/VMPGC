@@ -3,11 +3,12 @@ import os
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(HERE, ".."))
+sys.path.insert(0, os.path.join(HERE, ".."))   # the project root
 
-from compiler.language.lexer import ToyError
-from compiler.language.ast_nodes import *
-from compiler.language.parser import parse, Parser
+from compiler.frontend.lexer import ToyError
+from compiler.frontend.ast_nodes import *
+from compiler.frontend.parser import parse, Parser
+
 
 def body_of(source_code):
     """Statements of the single function in `source_code`."""

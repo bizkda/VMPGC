@@ -1,0 +1,9 @@
+// @exit 100
+// @stderr stack overflow
+fun forever(n: int): int {
+    return forever(n + 1) + 1;
+}
+fun main(): int {
+    print(forever(0));
+    return 0;
+}

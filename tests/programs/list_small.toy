@@ -1,0 +1,40 @@
+// @heap 16384
+// @expect-gc
+// Same idea as list_live, small enough to run in stress mode (a collection before every allocation).
+struct Node { val: int; next: Node; }
+
+fun push(head: Node, v: int): Node {
+    var n: Node = new Node;
+    n.val = v;
+    n.next = head;
+    return n;
+}
+fun length(list: Node): int {
+    var count: int = 0;
+    var p: Node = list;
+    while (p != null) { count = count + 1; p = p.next; }
+    return count;
+}
+fun sum(list: Node): int {
+    var total: int = 0;
+    var p: Node = list;
+    while (p != null) { total = total + p.val; p = p.next; }
+    return total;
+}
+fun main(): int {
+    var live: Node = null;
+    var i: int = 0;
+    while (i < 200) {
+        live = push(live, i);
+        var garbage: Node = push(push(null, i), i);
+        i = i + 1;
+    }
+    var round: int = 0;
+    while (round < 300) {
+        var tmp: Node = push(push(null, round), round);
+        round = round + 1;
+    }
+    print(length(live));
+    print(sum(live));
+    return 0;
+}

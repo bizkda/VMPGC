@@ -1,0 +1,16 @@
+Contenu de l'interface
+Éditeur Toy : vous écrivez le code, choisissez un exemple parmi tests/programs, le collecteur (Mark-and-Sweep ou Stop-and-Copy) et la taille du tas.
+Sortie : le résultat de la vraie VM gcvm, avec ses statistiques et son code de sortie.
+Bytecode : le --dump du vrai compilateur.
+Visualisateur du GC : le tas est dessiné en blocs colorés (objet, vivant, mort, nouvel objet, libre), et les racines de la pile sont entourées. Vous pouvez avancer pas à pas, passer à la collecte suivante, ou lancer la lecture automatique. Pour Mark-and-Sweep, on voit le tas avant la collecte, après le marquage (vivants et morts), puis après le balayage. Pour Cheney, on voit les deux semi-espaces et la copie.
+Comment c'est construit
+
+Le serveur server.py appelle votre compilateur et votre VM sans les modifier. Le visualisateur utilise gcsim.js, un simulateur JavaScript de la VM et des deux collecteurs : il reprend les mêmes règles que interp.c et heap.c. Il est utilisé uniquement pour l'affichage.
+
+Vérifications faites
+J'ai comparé le simulateur à la vraie VM sur vos 30 programmes de test, avec les deux collecteurs (60 exécutions). Les sorties, les codes de sortie et les statistiques du GC (collectes, objets alloués, octets alloués et récupérés) sont identiques. La page affiche d'ailleurs un « ✓ mêmes statistiques que la vraie VM ».
+J'ai ouvert la page dans un navigateur sans interface : pas d'erreur, et les captures des deux collecteurs sont correctes.
+Limites
+Choisissez un petit tas (1 à 16 Ko) pour que la collecte soit lisible : avec un tas de 8 Mo, rien ne se passe.
+Le visualisateur garde au plus 1 500 événements, et la simulation s'arrête à 3 millions d'instructions.
+Je n'ai pas testé l'interface sur mobile ni dans d'autres navigateurs.

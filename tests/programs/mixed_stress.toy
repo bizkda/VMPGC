@@ -1,0 +1,45 @@
+// @heap 16384
+// @expect-gc
+// A bit of everything with small sizes, to be run with a collection before every allocation.
+struct Pair { left: Node; right: Node; }
+struct Node { val: int; next: Node; }
+
+fun node(v: int, next: Node): Node {
+    var n: Node = new Node;
+    n.val = v;
+    n.next = next;
+    return n;
+}
+fun total(list: Node): int {
+    var sum: int = 0;
+    var p: Node = list;
+    while (p != null) { sum = sum + p.val; p = p.next; }
+    return sum;
+}
+fun make_pair(a: Node, b: Node): Pair {
+    var p: Pair = new Pair;
+    p.left = a;
+    p.right = b;
+    return p;
+}
+fun main(): int {
+    var pairs: Pair[] = new Pair[20];
+    var i: int = 0;
+    while (i < 20) {
+        pairs[i] = make_pair(node(i, node(i + 1, null)), node(i * 10, null));
+        i = i + 1;
+    }
+    var numbers: int[] = new int[20];
+    i = 0;
+    while (i < 20) { numbers[i] = total(pairs[i].left) + total(pairs[i].right); i = i + 1; }
+    var check: int = 0;
+    i = 0;
+    while (i < 20) { check = check + numbers[i]; i = i + 1; }
+    print(check);
+
+    var churn: int = 0;              // garbage, to make the collector work
+    i = 0;
+    while (i < 300) { churn = churn + total(node(i, node(i, null))); i = i + 1; }
+    print(churn);
+    return 0;
+}
