@@ -8,7 +8,7 @@ from compiler.frontend.lexer import ToyError
 from compiler.frontend.ast_nodes import Name
 from compiler.frontend.parser import parse
 from compiler.frontend.parser import Parser
-from compiler.frontend.checker import Checker, check
+from compiler.frontend.semantique import Checker, check
 from compiler.frontend.toy_types import INT, BOOL, NULL, StructType, ArrayType
 
 

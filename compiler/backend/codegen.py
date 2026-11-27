@@ -7,7 +7,7 @@ it write the stack map at every NEW, NEW_ARRAY and CALL.
 from compiler.frontend.lexer import ToyError
 from compiler.frontend.ast_nodes import *
 from compiler.frontend.toy_types import INT, BOOL, StructType, ArrayType, is_reference
-from compiler.frontend.checker import always_returns
+from compiler.frontend.semantique import always_returns
 from compiler.backend.bytecode import (EFFECTS, SAFEPOINTS, Instruction, StackMap, FunctionCode,
                       TypeEntry, STRUCT, ARRAY_OF_VALUES, ARRAY_OF_REFERENCES)
 

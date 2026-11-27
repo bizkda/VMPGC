@@ -17,7 +17,7 @@ if __package__ in (None, ""):
 from compiler.frontend.lexer import ToyError
 from compiler.frontend.ast_nodes import Node, TypeRef
 from compiler.frontend.parser import parse
-from compiler.frontend.checker import check
+from compiler.frontend.semantique import check
 
 # (branch, last branch, vertical bar, blank) used to draw the tree
 FANCY = ("├── ", "└── ", "│   ", "    ")

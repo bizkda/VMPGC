@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VMPGC – compilateur Toy et ramasse-miettes</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--tx:#1f2937;--mut:#6b7280;--bd:#d9dde3;--ac:#1f3a5f;--free:#e5e7eb;--err:#b91c1c}
+@media (prefers-color-scheme:dark){:root{--bg:#111418;--card:#1b2027;--tx:#e5e7eb;--mut:#9ca3af;--bd:#2f3742;--ac:#7aa7e0;--free:#2b323c;--err:#f87171}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.45 system-ui,sans-serif}
+header{padding:10px 18px;border-bottom:1px solid var(--bd);background:var(--card);display:flex;gap:14px;align-items:baseline}
+header h1{font-size:17px;margin:0;color:var(--ac)}header span{color:var(--mut)}
+main{display:grid;grid-template-columns:minmax(300px,2fr) 3fr;gap:12px;padding:12px;max-width:1500px;margin:auto}
+@media (max-width:900px){main{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:12px;min-width:0}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px}
+label{color:var(--mut);font-size:12px}select,input,button{font:inherit;color:var(--tx);background:var(--card);border:1px solid var(--bd);border-radius:6px;padding:5px 9px}
+button{cursor:pointer}button.pri{background:var(--ac);color:var(--bg);border-color:var(--ac);font-weight:600}button:hover{filter:brightness(1.08)}
+textarea{width:100%;height:440px;font:13px/1.45 ui-monospace,Consolas,monospace;color:var(--tx);background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:8px;resize:vertical;tab-size:4}
+.tabs{display:flex;gap:4px;margin-bottom:10px;border-bottom:1px solid var(--bd)}
+.tabs button{border:0;border-bottom:2px solid transparent;border-radius:0;background:none;color:var(--mut)}
+.tabs button.on{color:var(--ac);border-color:var(--ac);font-weight:600}
+pre{margin:0;padding:10px;background:var(--bg);border:1px solid var(--bd);border-radius:6px;overflow:auto;max-height:560px;font:12.5px/1.4 ui-monospace,Consolas,monospace;white-space:pre}
+.error{color:var(--err);font-weight:600;white-space:pre-wrap}.mut{color:var(--mut)}
+canvas{width:100%;display:block;border:1px solid var(--bd);border-radius:6px;background:var(--bg)}
+.leg{display:flex;flex-wrap:wrap;gap:12px;margin:8px 0;font-size:12px;color:var(--mut)}.leg i{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:6px;margin:8px 0}
+.stats div{background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:5px 8px}.stats b{display:block;font-size:16px}.stats small{color:var(--mut)}
+#tip{position:fixed;pointer-events:none;background:#111;color:#fff;font-size:12px;padding:4px 8px;border-radius:5px;display:none;z-index:9}
+.hide{display:none}.ok{color:#15803d}
+</style>
+</head>
+<body>
+<header><h1>VMPGC</h1><span>Compilateur Toy (Python) · VM (C) · ramasse-miettes précis</span></header>
+<main>
+ <section class="card">
+  <div class="row">
+   <select id="ex" title="Exemples"></select>
+   <label>Collecteur <select id="gc"><option value="ms">Mark-and-Sweep</option><option value="copy">Stop-and-Copy (Cheney)</option></select></label>
+   <label>Tas (octets) <input id="heap" type="number" value="4096" min="1024" step="1024" style="width:90px"></label>
+   <button class="pri" id="run">▶ Compiler et exécuter</button>
+  </div>
+  <textarea id="src" spellcheck="false"></textarea>
+  <p class="mut" style="margin:6px 0 0">Un tas petit (1 à 16 Ko) rend la collecte visible ; la VM réelle et le visualisateur utilisent la même taille.</p>
+ </section>
+ <section class="card">
+  <div class="tabs"><button data-t="viz" class="on">Visualisateur du GC</button><button data-t="out">Sortie</button><button data-t="bc">Bytecode</button></div>
+  <div id="err" class="error hide"></div>
+  <div id="t-viz">
+   <div class="row">
+    <button id="pg">⏮ collecte préc.</button><button id="pe">◀</button><button id="play">⏵ lecture</button><button id="ne">▶</button><button id="ng">collecte suiv. ⏭</button>
+    <input id="sl" type="range" min="0" max="0" value="0" style="flex:1;min-width:140px;padding:0">
+   </div>
+   <div><b id="lab">—</b> <span class="mut" id="sub"></span></div>
+   <div class="stats" id="stats"></div>
+   <canvas id="cv"></canvas>
+   <div class="leg" id="leg"></div>
+   <div class="mut" id="note"></div>
+  </div>
+  <div id="t-out" class="hide"><pre id="outp"></pre><p id="check" class="mut"></p></div>
+  <div id="t-bc" class="hide"><pre id="bcp"></pre></div>
+ </section>
+</main>
+<div id="tip"></div>
+<script src="/gcsim.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const DEFAULT = `struct Node { val: int; next: Node; }
+
+fun push(head: Node, v: int): Node {
+    var n: Node = new Node;
+    n.val = v;
+    n.next = head;
+    return n;
+}
+
+fun main(): int {
+    var live: Node = null;
+    var i: int = 0;
+    while (i < 60) {
+        live = push(live, i);                          // reste vivant
+        var garbage: Node = push(push(null, i), i);    // deux déchets par tour
+        i = i + 1;
+    }
+    print(live.val);
+    return 0;
+}`;
+const COLORS = ["", "#3b82f6", "#22c55e", "#ef4444", "#f59e0b", "#a855f7", "#9ca3af66"];
+const NAMES = ["libre", "objet", "vivant", "mort (déchet)", "nouvel objet", "déjà copié", "semi-espace inutilisé"];
+let sim = null, idx = 0, timer = null, examples = {};
+
+$("src").value = DEFAULT;
+$("leg").innerHTML = [1, 2, 3, 4, 5, 0, 6].map((i) => `<span><i style="background:${i ? COLORS[i] : "var(--free)"}"></i>${NAMES[i]}</span>`).join("") +
+  `<span><i style="background:none;border:2px solid var(--tx)"></i>racine (pile)</span>`;
+fetch("/api/examples").then((r) => r.json()).then((e) => {
+  examples = e; $("ex").innerHTML = `<option value="">Exemples…</option>` + Object.keys(e).map((n) => `<option>${n}</option>`).join("");
+});
+$("ex").onchange = () => { if ($("ex").value) $("src").value = examples[$("ex").value].replace(/^\/\/ @.*\n/gm, ""); };
+document.querySelectorAll(".tabs button").forEach((b) => b.onclick = () => {
+  document.querySelectorAll(".tabs button").forEach((x) => x.classList.toggle("on", x === b));
+  for (const t of ["viz", "out", "bc"]) $("t-" + t).classList.toggle("hide", t !== b.dataset.t);
+  if (b.dataset.t === "viz") draw();
+});
+
+$("run").onclick = async () => {
+  stop(); $("err").classList.add("hide"); $("run").disabled = true;
+  try {
+    const gc = $("gc").value, heap = Math.max(1024, +$("heap").value || 4096);
+    const r = await fetch("/api/run", { method: "POST", body: JSON.stringify({ source: $("src").value, gc, heap }) }).then((x) => x.json());
+    if (!r.ok) { $("err").textContent = `Erreur de ${r.stage} : ${r.error}`; $("err").classList.remove("hide"); sim = null; draw(); return; }
+    $("bcp").textContent = r.bytecode;
+    const meaning = { 100: "erreur d'exécution", 101: "mémoire insuffisante", 102: "erreur du vérificateur de tas", 103: "fichier .tbc invalide" }[r.exit_code];
+    $("outp").textContent = (r.output || "(aucune sortie)") + `\n── stderr ──\n${r.stderr.trim() || "(vide)"}\n── code de sortie : ${r.exit_code}${meaning ? " (" + meaning + ")" : ""}`;
+    sim = GCSim.simulate(r.program, { gc, heap });
+    const real = /collectes=(\d+).*objets_alloues=(\d+).*octets_recuperes=(\d+)/.exec(r.stderr);
+    const same = real && +real[1] === sim.stats.coll && +real[2] === sim.stats.objs && +real[3] === sim.stats.rec;
+    $("check").innerHTML = real ? (same ? `<span class="ok">✓ Le visualisateur donne les mêmes statistiques que la vraie VM</span> (${sim.stats.coll} collectes, ${sim.stats.objs} objets alloués).`
+      : `Statistiques différentes de la vraie VM (visualisateur : ${sim.stats.coll} collectes ; VM : ${real[1]}).`) : "";
+    const first = sim.events.findIndex((e) => e.k === "gc");
+    idx = first >= 0 ? first : Math.max(0, sim.events.length - 1);
+    $("sl").max = Math.max(0, sim.events.length - 1);
+    draw();
+  } catch (e) { $("err").textContent = "Erreur : " + e.message; $("err").classList.remove("hide"); }
+  finally { $("run").disabled = false; }
+};
+
+function go(i) { if (!sim) return; idx = Math.min(Math.max(0, i), sim.events.length - 1); draw(); }
+function jump(dir) {
+  if (!sim) return; let i = idx + dir;
+  while (i >= 0 && i < sim.events.length && !(sim.events[i].k === "gc" && sim.events[i].label.startsWith("Début"))) i += dir;
+  if (i >= 0 && i < sim.events.length) go(i);
+}
+function stop() { clearInterval(timer); timer = null; $("play").textContent = "⏵ lecture"; }
+$("pe").onclick = () => go(idx - 1); $("ne").onclick = () => go(idx + 1);
+$("pg").onclick = () => jump(-1); $("ng").onclick = () => jump(1);
+$("sl").oninput = () => go(+$("sl").value);
+$("play").onclick = () => {
+  if (timer) return stop();
+  $("play").textContent = "⏸ pause";
+  timer = setInterval(() => { if (!sim || idx >= sim.events.length - 1) return stop(); go(idx + 1); }, 350);
+};
+
+let hit = [];
+function draw() {
+  const cv = $("cv"), ctx = cv.getContext("2d");
+  if (!sim || !sim.events.length) { cv.width = 10; cv.height = 10; $("lab").textContent = "—"; $("sub").textContent = "Compilez un programme pour voir le tas."; $("stats").innerHTML = ""; $("note").textContent = ""; return; }
+  const ev = sim.events[idx], dpr = window.devicePixelRatio || 1, W = cv.clientWidth || 600;
+  const total = sim.totalBytes, regions = sim.isMS ? [[0, total, "Tas"]] : [[0, sim.half, "Espace A"], [sim.half, sim.half, "Espace B"]];
+  const unit = Math.max(8, Math.ceil(total / 4096 / 8) * 8), pad = 6, head = sim.isMS ? 0 : 18;
+  const lay = regions.map(([r0, len, name]) => {
+    const cells = Math.ceil(len / unit), cols = Math.min(cells, Math.max(8, Math.ceil(Math.sqrt(cells * 3)))), cs = Math.max(3, Math.floor((W - 2 * pad) / cols));
+    return { r0, len, name, cells, cols, cs, rows: Math.ceil(cells / cols) };
+  });
+  let H = pad; lay.forEach((l) => { l.y0 = H + head; H = l.y0 + l.rows * l.cs + pad + 4; });
+  cv.width = W * dpr; cv.height = H * dpr; cv.style.height = H + "px"; ctx.scale(dpr, dpr);
+  const cs0 = getComputedStyle(document.documentElement), free = cs0.getPropertyValue("--free").trim(), tx = cs0.getPropertyValue("--tx").trim(), mut = cs0.getPropertyValue("--mut").trim();
+  hit = [];
+  const cellXY = (l, c) => [pad + (c % l.cols) * l.cs, l.y0 + Math.floor(c / l.cols) * l.cs];
+  lay.forEach((l) => {
+    if (!sim.isMS) { ctx.fillStyle = mut; ctx.font = "12px system-ui"; ctx.fillText(l.name + (sim.events[idx].cur === (l.r0 ? 1 : 0) ? " (courant)" : ""), pad, l.y0 - 5); }
+    ctx.fillStyle = free; for (let c = 0; c < l.cells; c++) { const [x, y] = cellXY(l, c); ctx.fillRect(x, y, l.cs - 1, l.cs - 1); }
+  });
+  const place = (a) => lay.find((l) => a >= l.r0 && a < l.r0 + l.len);
+  ev.blocks.forEach((b) => {
+    const [a, s, state, type] = b, l = place(a); if (!l) return;
+    const c0 = Math.floor((a - l.r0) / unit), c1 = Math.min(l.cells, Math.ceil((a + s - l.r0) / unit));
+    for (let c = c0; c < c1; c++) {
+      const [x, y] = cellXY(l, c);
+      if (state !== 0) { ctx.fillStyle = COLORS[state]; ctx.fillRect(x, y, l.cs - 1, l.cs - 1); }
+      if (c === c0 && state >= 1 && state <= 5) { ctx.fillStyle = "rgba(0,0,0,.55)"; ctx.fillRect(x, y, Math.max(1, l.cs > 6 ? 2 : 1), l.cs - 1); }
+    }
+    hit.push({ l, c0, c1, b });
+  });
+  ctx.strokeStyle = tx; ctx.lineWidth = 2;
+  ev.roots.forEach((a) => { const l = place(a); if (!l) return; const [x, y] = cellXY(l, Math.floor((a - l.r0) / unit)); ctx.strokeRect(x + 1, y + 1, l.cs - 3, l.cs - 3); });
+
+  const used = ev.blocks.filter((b) => b[2] >= 1 && b[2] <= 5).reduce((n, b) => n + b[1], 0), cap = sim.isMS ? total : sim.half;
+  $("lab").textContent = ev.label;
+  $("sub").textContent = `instruction n° ${ev.step} · fonction ${ev.fn || "—"} · ${ev.depth} frame(s) · ${ev.roots.length} racine(s) vers le tas`;
+  $("stats").innerHTML = [["Collectes", ev.stats.coll], ["Objets alloués", ev.stats.objs], ["Octets récupérés", ev.stats.rec], ["Occupation", Math.round(100 * used / cap) + " %"], ["Événement", `${idx + 1} / ${sim.events.length}`]]
+    .map(([k, v]) => `<div><small>${k}</small><b>${v}</b></div>`).join("");
+  $("sl").value = idx;
+  $("note").textContent = (sim.events.length >= 1500 ? "Visualisation limitée aux 1500 premiers événements. " : "") + (sim.status !== "ok" ? `Fin : ${sim.message}` : "");
+}
+$("cv").onmousemove = (e) => {
+  const tip = $("tip"), r = $("cv").getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top; let found = null;
+  for (const h of hit) {
+    const l = h.l, col = Math.floor((x - 6) / l.cs), row = Math.floor((y - l.y0) / l.cs);
+    if (col < 0 || col >= l.cols || row < 0) continue;
+    const c = row * l.cols + col; if (c >= h.c0 && c < h.c1) { found = h.b; break; }
+  }
+  if (!found) { tip.style.display = "none"; return; }
+  const [a, s, state, type] = found;
+  tip.textContent = `${state === 0 ? "bloc libre" : state === 6 ? "semi-espace inutilisé" : "objet de type n° " + type} · ${NAMES[state]} · adresse ${a} · ${s} octets`;
+  tip.style.display = "block"; tip.style.left = e.clientX + 12 + "px"; tip.style.top = e.clientY + 12 + "px";
+};
+$("cv").onmouseleave = () => ($("tip").style.display = "none");
+addEventListener("resize", draw);
+</script>
+</body>
+</html>

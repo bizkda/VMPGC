@@ -63,7 +63,7 @@ class Instruction:
 class StackMap:
     """Which slots hold references at a safepoint (a bit is 1 for a reference).
 
-    pc            index of the NEW / NEW_ARRAY / CALL instruction
+    pc            programme counter
     depth         number of values on the operand stack, after the instruction
                   has popped its operands (bit 0 of stack_mask = bottom of the stack)
     locals_mask   one bit per local variable of the function

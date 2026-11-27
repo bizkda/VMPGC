@@ -6,7 +6,7 @@ sys.path.insert(0, os.path.join(HERE, ".."))   # the project root
 
 from compiler.frontend.lexer import ToyError
 from compiler.frontend.parser import parse
-from compiler.frontend.checker import Checker
+from compiler.frontend.semantique import Checker
 from compiler.backend.codegen import TypeTable, FunctionGenerator
 from compiler.backend.bytecode import STRUCT, ARRAY_OF_VALUES, ARRAY_OF_REFERENCES
 

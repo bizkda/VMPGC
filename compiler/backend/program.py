@@ -7,7 +7,7 @@ Jump targets and stack-map positions are then indices in that flat array.
 from dataclasses import dataclass
 
 from compiler.frontend.parser import parse
-from compiler.frontend.checker import Checker
+from compiler.frontend.semantique import Checker
 from compiler.backend.bytecode import Instruction, StackMap
 from compiler.backend.codegen import TypeTable, FunctionGenerator
 

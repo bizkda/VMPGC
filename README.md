@@ -95,7 +95,7 @@ Exit codes: `0` to `99` the value returned by `main`; `1` bad command line; `100
 compiler/
   toyc.py                the compiler command
   frontend/              from source text to a type-checked AST (M1, M2)
-    lexer.py  parser.py  ast_nodes.py  toy_types.py  checker.py  show_ast.py
+    lexer.py  parser.py  ast_nodes.py  toy_types.py  semantique.py  show_ast.py
   backend/               from the typed AST to the .tbc file (M3)
     codegen.py           code generator for one function, stack maps, type table
     program.py           the whole program: function table, relocation of jumps
